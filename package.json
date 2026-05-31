@@ -1,0 +1,38 @@
+{
+  "name": "api-panel",
+  "version": "1.0.0",
+  "description": "AI API 聚合面板 — 多平台余额/用量查询 (Electron)",
+  "author": "Hermes <hermes@localhost>",
+  "homepage": "https://github.com/hermes/api-panel",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron . --no-sandbox --disable-setuid-sandbox",
+    "build": "electron-builder",
+    "build:linux": "electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.hermes.api-panel",
+    "productName": "API 聚合面板",
+    "linux": {
+      "target": ["AppImage"],
+      "category": "Utility",
+      "executableName": "api-panel",
+      "executableArgs": [
+        "--no-sandbox",
+        "--disable-setuid-sandbox"
+      ]
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "static/**",
+      "templates/**",
+      "config/**"
+    ],
+    "extraResources": []
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  }
+}

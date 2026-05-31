@@ -1,0 +1,563 @@
+/* ─── ropedia 暗色美学 — 深绿底色 + 青柠强调色 ─── */
+
+:root {
+  --bg-primary: #0a0f0a;
+  --bg-card: #111a11;
+  --bg-card-hover: #162016;
+  --bg-input: #0d140d;
+  --bg-modal: #0c130c;
+
+  --border: #1a3a1a;
+  --border-focus: #2a5a2a;
+
+  --accent: #a3ff47;
+  --accent-dim: #7acc35;
+  --accent-glow: rgba(163, 255, 71, 0.12);
+
+  --text-primary: #e0e8dd;
+  --text-secondary: #8a9a85;
+  --text-muted: #5a6a55;
+
+  --danger: #ff4d4d;
+  --warning: #ffb84d;
+  --success: #a3ff47;
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --font: 'Inter Tight', system-ui, -apple-system, sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.6;
+  overflow-y: auto;
+}
+
+/* ─── 暗色自定义滚动条（覆盖原生丑陋样式） ─── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a3a2a;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a5a3a;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+/* Firefox 滚动条 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2a3a2a transparent;
+}
+
+/* ─── 自定义标题栏（无边框窗口） ─── */
+.app-header {
+  display: flex;
+  align-items: center;
+  height: 42px;
+  padding: 0 0 0 18px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.titlebar-drag {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  height: 100%;
+  -webkit-app-region: drag;
+  -webkit-user-select: none;
+}
+.titlebar-logo {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+}
+.titlebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+.titlebar-refresh {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 14px;
+  margin-right: 6px;
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius-sm);
+  background: var(--accent-glow);
+  color: var(--accent);
+  font-family: var(--font);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.titlebar-refresh:hover {
+  background: var(--accent);
+  color: var(--bg-primary);
+  border-color: var(--accent);
+}
+.titlebar-refresh:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.titlebar-refresh .icon {
+  display: inline-block;
+}
+.titlebar-refresh.spinning .icon {
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+/* ─── 窗口控制按钮 ─── */
+.window-controls {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+.win-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  outline: none;
+  -webkit-app-region: no-drag;
+}
+.win-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+.win-btn-close:hover {
+  background: #e81123;
+  color: #fff;
+}
+
+.btn-primary, .btn-secondary {
+  padding: 10px 24px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+.btn-primary {
+  background: var(--accent);
+  color: var(--bg-primary);
+}
+.btn-primary:hover {
+  background: var(--accent-dim);
+}
+.btn-secondary {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
+/* ─── 全页面 flex 布局，确保一屏看全貌 ─── */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ─── 主区域：自动撑满剩余空间，内部滚动 ─── */
+.main {
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 24px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ─── 卡片网格 ─── */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+/* ─── 平台卡片 ─── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  transition: all 0.25s;
+  position: relative;
+  overflow: hidden;
+}
+.card:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--accent-dim);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.card-alias {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.card-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+}
+.card-badge.active {
+  background: rgba(163, 255, 71, 0.15);
+  color: var(--accent);
+}
+.card-badge.inactive {
+  background: rgba(255, 77, 77, 0.15);
+  color: var(--danger);
+}
+
+/* ─── 余额显示 ─── */
+.card-balance {
+  margin: 12px 0;
+}
+.balance-value {
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+}
+.balance-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.balance-details {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.balance-detail-item {
+  font-size: 0.8rem;
+}
+.balance-detail-item .label {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+.balance-detail-item .value {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* ─── 卡片操作 ─── */
+.card-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.card-actions button {
+  flex: 1;
+  padding: 8px 0;
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.card-actions button:hover {
+  color: var(--accent);
+  border-color: var(--accent-dim);
+  background: var(--accent-glow);
+}
+
+/* 控制台直达链接 */
+.btn-console {
+  flex: 1;
+  padding: 8px 0;
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.btn-console:hover {
+  color: var(--accent);
+  border-color: var(--accent-dim);
+  background: var(--accent-glow);
+}
+.card-refresh {
+  /* 独立刷新按钮样式同上 */
+}
+.card-settings {
+  /* 设置按钮样式 */
+}
+
+/* ─── 状态提示 ─── */
+.card-status {
+  font-size: 0.8rem;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  margin-top: 12px;
+}
+.card-status.loading {
+  background: rgba(255, 184, 77, 0.1);
+  color: var(--warning);
+}
+.card-status.error {
+  background: rgba(255, 77, 77, 0.1);
+  color: var(--danger);
+}
+.card-status.success {
+  background: rgba(163, 255, 71, 0.08);
+  color: var(--accent-dim);
+}
+.card-status.no-api {
+  background: rgba(138, 154, 133, 0.08);
+  color: var(--text-secondary);
+}
+.card-status a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.card-status a:hover {
+  text-decoration: underline;
+}
+
+/* ─── 弹窗 ─── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.modal-overlay:not([hidden]) {
+  display: flex;
+  animation: fadeIn 0.15s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.modal {
+  background: var(--bg-modal);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 90%;
+  max-width: 440px;
+  padding: 0;
+  animation: slideUp 0.2s ease;
+}
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px 0;
+}
+.modal-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+.modal-close:hover {
+  color: var(--text-primary);
+}
+.modal-body {
+  padding: 20px 24px 24px;
+}
+
+/* ─── 表单 ─── */
+.field {
+  display: block;
+  margin-bottom: 18px;
+}
+.field-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.field input[type="text"],
+.field input[type="password"] {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 0.9rem;
+  transition: border-color 0.2s;
+}
+.field input:focus {
+  outline: none;
+  border-color: var(--accent-dim);
+}
+
+.key-input-wrap {
+  position: relative;
+  display: flex;
+}
+.key-input-wrap input {
+  flex: 1;
+  padding-right: 44px;
+}
+.toggle-key {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+.toggle-key:hover {
+  color: var(--text-primary);
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+}
+.form-actions button {
+  flex: 1;
+}
+
+/* ─── 页脚 ─── */
+.footer {
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 12px 24px;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.footer-dot {
+  margin: 0 6px;
+}
+.footer code {
+  background: var(--bg-card);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.7rem;
+}
+
+/* ─── 今日用量 ─── */
+.today-usage {
+  margin-top: 14px;
+  padding: 12px;
+  background: rgba(163, 255, 71, 0.05);
+  border: 1px solid rgba(163, 255, 71, 0.12);
+  border-radius: var(--radius-sm);
+}
+.today-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent-dim);
+  margin-bottom: 8px;
+}
+.today-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.today-grid .label {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+.today-grid .value {
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.85rem;
+}

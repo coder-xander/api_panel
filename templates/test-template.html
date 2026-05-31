@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head><body>
+<div id="app">
+  <p v-for="p in items" :key="p.id">
+    <template v-if="p.a">A: {{ p.name }}</template>
+    <template v-else>B: {{ p.name }}</template>
+  </p>
+</div>
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script>
+window.onerror = function(m,s,l) { document.body.innerHTML += '<p style=color:red>ERR: '+m+'</p>'; };
+const { createApp } = Vue;
+createApp({
+  data() { return { items: [{id:1,name:'x',a:true},{id:2,name:'y',a:false}] }; }
+}).mount('#app');
+</script>
+</body></html>

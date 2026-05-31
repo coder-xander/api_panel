@@ -1,0 +1,26 @@
+{
+  "platforms": {
+    "deepseek": {
+      "alias": "DeepSeek",
+      "key": "",
+      "enabled": false
+    },
+    "kimi": {
+      "alias": "Kimi CN",
+      "key": "",
+      "enabled": false
+    },
+    "xiaomi": {
+      "alias": "小米 MiMo",
+      "key": "",
+      "enabled": false,
+      "no_balance_api": true
+    },
+    "lumai": {
+      "alias": "Lumai",
+      "key": "",
+      "enabled": false
+    }
+  },
+  "auto_load_env": true
+}
