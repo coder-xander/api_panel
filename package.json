@@ -1,6 +1,6 @@
 {
   "name": "api-panel",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "AI API 聚合面板 — 多平台余额/用量查询 (Electron)",
   "author": "Hermes <hermes@localhost>",
   "homepage": "https://github.com/hermes/api-panel",
