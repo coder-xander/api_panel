@@ -10,9 +10,11 @@ const HOME = require('os').homedir();
 // __dirname = electron/，项目根在上一级
 const ROOT = path.join(__dirname, '..');
 const PACKAGE = require(path.join(ROOT, 'package.json'));
-const CONFIG_FILE = path.join(ROOT, 'config', 'keys.json');
+// 敏感配置统一存放到用户配置目录，不写死在项目里
+const CONFIG_DIR = path.join(HOME, '.config', 'api-panel');
+const CONFIG_FILE = path.join(CONFIG_DIR, 'keys.json');
 const ENV_FILE = path.join(HOME, '.hermes', '.env');
-const STATE_FILE = path.join(HOME, '.config', 'api-panel-state.json');
+const STATE_FILE = path.join(CONFIG_DIR, 'state.json');
 
 // ─── 窗口状态持久化 ───
 function loadWindowState() {
@@ -182,9 +184,22 @@ async function queryBalance(platformId, apiKey) {
 // ─── 配置管理 ───
 function loadConfig() {
   let config = { platforms: {}, auto_load_env: true };
+
+  // ─── 新路径优先：~/.config/api-panel/keys.json（用户配置目录，安全隔离）
   if (fs.existsSync(CONFIG_FILE)) {
     try { config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8')); }
     catch (_) { /* ignore corrupt config */ }
+  } else {
+    // 从旧路径迁移（项目内 config/keys.json → 用户配置目录）
+    const oldFile = path.join(ROOT, 'config', 'keys.json');
+    if (fs.existsSync(oldFile)) {
+      try {
+        config = JSON.parse(fs.readFileSync(oldFile, 'utf-8'));
+        // 迁移到新路径
+        if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR, { recursive: true });
+        fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
+      } catch (_) { /* ignore */ }
+    }
   }
 
   // 自动从 Hermes .env 注入
@@ -221,6 +236,7 @@ function loadConfig() {
 }
 
 function saveConfig(config) {
+  if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR, { recursive: true });
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
 }
 

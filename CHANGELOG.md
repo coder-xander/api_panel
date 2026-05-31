@@ -3,9 +3,12 @@
 ## [v0.3.1] — 2026-05-31
 
 ### 改进
-- 全新现代化应用图标：四节点互联 + 中心聚合设计，代表多平台 API 集成
-- 像素级优化的 SVG favicon，替代旧版 ⚡ 符号
-- 新增 `scripts/generate_icons.py` 图标生成脚本
+- **安全重构**：API Key 配置迁移到 `~/.config/api-panel/keys.json`，不再写死在项目目录
+- 初次启动自动从旧路径迁移配置（`config/keys.json` → `~/.config/api-panel/keys.json`）
+- `config/keys.json` 加入 `.gitignore`，防止敏感数据误提交
+- 窗口状态文件统一到 `~/.config/api-panel/state.json`
+- 应用图标改为透明底 + 青柠绿闪电标志
+- 页脚文案更新为实际配置路径
 
 ---
 
