@@ -7,7 +7,9 @@ const fs = require('fs');
 const https = require('https');
 
 const HOME = require('os').homedir();
-const CONFIG_FILE = path.join(__dirname, 'config', 'keys.json');
+// __dirname = electron/，项目根在上一级
+const ROOT = path.join(__dirname, '..');
+const CONFIG_FILE = path.join(ROOT, 'config', 'keys.json');
 const ENV_FILE = path.join(HOME, '.hermes', '.env');
 const STATE_FILE = path.join(HOME, '.config', 'api-panel-state.json');
 
@@ -330,7 +332,7 @@ function createWindow() {
     titleBarStyle: 'hidden',
     backgroundColor: '#0a0f0a',
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.js'),  // electron/preload.js
       contextIsolation: true,
       nodeIntegration: false,
     },
@@ -351,7 +353,7 @@ function createWindow() {
     mainWindow.maximize();
   }
 
-  mainWindow.loadFile(path.join(__dirname, 'templates', 'index.html'));
+  mainWindow.loadFile(path.join(ROOT, 'src', 'index.html'));
 
   // 保存窗口状态（关闭时）
   mainWindow.on('close', () => {

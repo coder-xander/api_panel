@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.3.0] — 2026-05-31
+
+### 重构
+- 标准化目录结构：`electron/`（主进程）、`src/`（渲染进程）
+- `src/components/`、`src/assets/`、`src/index.html`
+
+---
+
 ## [v0.2.0] — 2026-05-31
 
 ### 重构

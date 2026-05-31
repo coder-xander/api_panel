@@ -4,7 +4,7 @@
   "description": "AI API 聚合面板 — 多平台余额/用量查询 (Electron)",
   "author": "Hermes <hermes@localhost>",
   "homepage": "https://github.com/hermes/api-panel",
-  "main": "main.js",
+  "main": "electron/main.js",
   "scripts": {
     "start": "electron . --no-sandbox --disable-setuid-sandbox",
     "build": "electron-builder",
@@ -23,10 +23,8 @@
       ]
     },
     "files": [
-      "main.js",
-      "preload.js",
-      "static/**",
-      "templates/**",
+      "electron/**",
+      "src/**",
       "config/**"
     ],
     "extraResources": []
