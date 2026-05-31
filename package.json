@@ -6,7 +6,7 @@
   "homepage": "https://github.com/hermes/api-panel",
   "main": "electron/main.js",
   "scripts": {
-    "start": "electron . --no-sandbox --disable-setuid-sandbox",
+    "start": "electron . --no-sandbox --disable-setuid-sandbox --enable-transparent-visuals --disable-gpu",
     "build": "electron-builder",
     "build:linux": "electron-builder --linux",
     "build:win": "electron-builder --win",
@@ -28,7 +28,9 @@
       "icon": "build/icons",
       "executableArgs": [
         "--no-sandbox",
-        "--disable-setuid-sandbox"
+        "--disable-setuid-sandbox",
+        "--enable-transparent-visuals",
+        "--disable-gpu"
       ]
     },
     "win": {

@@ -398,8 +398,10 @@ function createWindow() {
     minHeight: 600,
     title: 'API 聚合面板',
     frame: false,
+    transparent: true,
     titleBarStyle: 'hidden',
-    backgroundColor: '#0a0f0a',
+    // 不需要 backgroundColor：transparent 窗口由 CSS 自行绘制背景
+    // 否则圆角边缘会显示该颜色而非透明
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),  // electron/preload.js
       contextIsolation: true,

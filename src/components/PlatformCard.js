@@ -69,7 +69,7 @@ const PlatformCard = {
   },
 
   template: `
-    <div class="card">
+    <div class="card" :class="{ 'card-lumai': platform.id === 'lumai' && platform.has_key }">
       <!-- 头部 -->
       <div class="card-header">
         <div>
@@ -104,7 +104,10 @@ const PlatformCard = {
           </div>
         </div>
 
-        <!-- 今日实时用量（Lumai） -->
+        <!-- Lumai 三栏横向展示 -->
+        <div v-if="balance?.live_today || (balance?.models && balance.models.length) || balance?.lifetime" class="lumai-stats">
+
+        <!-- 今日实时用量 -->
         <div v-if="balance?.live_today" class="detail-section">
           <div class="section-title">📊 今日实时</div>
           <div class="mini-grid">
@@ -115,7 +118,7 @@ const PlatformCard = {
           </div>
         </div>
 
-        <!-- 按模型拆分（Lumai） -->
+        <!-- 按模型拆分 -->
         <div v-if="balance?.models && balance.models.length" class="detail-section">
           <div class="section-title">🤖 按模型拆分</div>
           <div class="model-list">
@@ -126,7 +129,7 @@ const PlatformCard = {
           </div>
         </div>
 
-        <!-- 终身统计（Lumai） -->
+        <!-- 终身统计 -->
         <div v-if="balance?.lifetime" class="detail-section">
           <div class="section-title">📈 终身累计</div>
           <div class="mini-grid">
@@ -134,6 +137,8 @@ const PlatformCard = {
             <div><span class="label">总消耗</span><br><span class="value">\${{ balance.lifetime.cost.toFixed(2) }}</span></div>
             <div><span class="label">总 Token</span><br><span class="value">{{ fmtNum(balance.lifetime.total_tokens) }}</span></div>
           </div>
+        </div>
+
         </div>
 
         <!-- 今日用量（daily_usage fallback） -->
