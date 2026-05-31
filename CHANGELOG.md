@@ -2,6 +2,12 @@
 
 ## [v0.3.0] — 2026-05-31
 
+### 新增
+- 打包配置：Linux `.deb` / Windows `.zip` 便携包 / NSIS 安装包
+- 应用图标（9 尺寸 PNG + Windows `.ico`）
+- 页脚动态显示版本号（IPC `get-version`）
+- Linux 桌面入口 `.desktop` 文件
+
 ### 重构
 - 标准化目录结构：`electron/`（主进程）、`src/`（渲染进程）
 - `src/components/`、`src/assets/`、`src/index.html`
