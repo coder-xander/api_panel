@@ -1,6 +1,6 @@
 {
   "name": "api-panel",
-  "version": "1.0.0",
+  "version": "0.3.0",
   "description": "AI API 聚合面板 — 多平台余额/用量查询 (Electron)",
   "author": "Hermes <hermes@localhost>",
   "homepage": "https://github.com/hermes/api-panel",
@@ -8,19 +8,43 @@
   "scripts": {
     "start": "electron . --no-sandbox --disable-setuid-sandbox",
     "build": "electron-builder",
-    "build:linux": "electron-builder --linux"
+    "build:linux": "electron-builder --linux",
+    "build:win": "electron-builder --win",
+    "build:all": "electron-builder --linux --win"
   },
   "build": {
     "appId": "com.hermes.api-panel",
     "productName": "API 聚合面板",
+    "copyright": "Copyright © 2026 Hermes",
     "linux": {
-      "target": ["AppImage"],
+      "target": [
+        {
+          "target": "deb",
+          "arch": ["x64"]
+        }
+      ],
       "category": "Utility",
       "executableName": "api-panel",
+      "icon": "build/icons",
       "executableArgs": [
         "--no-sandbox",
         "--disable-setuid-sandbox"
       ]
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "icon": "build/icons/icon.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "build/icons/icon.ico",
+      "uninstallerIcon": "build/icons/icon.ico"
     },
     "files": [
       "electron/**",

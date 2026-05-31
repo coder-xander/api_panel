@@ -15,10 +15,12 @@ createApp({
       editingPlatform: null,
       autoRefreshTimer: null,
       windowMaximized: false,
+      appVersion: '0.0.0',
     };
   },
 
   async mounted() {
+    try { this.appVersion = await window.electronAPI.getVersion(); } catch (_) {}
     await this.loadPlatforms();
     await this.refreshAll();
     this.autoRefreshTimer = setInterval(() => this.refreshAll(), 30 * 60 * 1000);
@@ -164,7 +166,7 @@ createApp({
       <span class="footer-dot">·</span>
       <span>每 30 分钟自动刷新</span>
       <span class="footer-dot">·</span>
-      <span>Electron 1.0.0</span>
+      <span>v{{ appVersion }}</span>
     </footer>
   `,
 }).mount('#app');

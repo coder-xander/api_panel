@@ -29,5 +29,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // 应用信息
   platform: process.platform,
-  version: '1.0.0',
+  getVersion: () => ipcRenderer.invoke('get-version'),
 });

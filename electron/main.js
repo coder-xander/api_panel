@@ -9,6 +9,7 @@ const https = require('https');
 const HOME = require('os').homedir();
 // __dirname = electron/，项目根在上一级
 const ROOT = path.join(__dirname, '..');
+const PACKAGE = require(path.join(ROOT, 'package.json'));
 const CONFIG_FILE = path.join(ROOT, 'config', 'keys.json');
 const ENV_FILE = path.join(HOME, '.hermes', '.env');
 const STATE_FILE = path.join(HOME, '.config', 'api-panel-state.json');
@@ -297,6 +298,9 @@ function registerIpcHandlers() {
     saveConfig(config);
     return { status: 'ok' };
   });
+
+  // ─── 应用信息 ───
+  ipcMain.handle('get-version', () => PACKAGE.version);
 
   // ─── 窗口控制（无边框自定义标题栏） ───
   ipcMain.handle('window-minimize', () => {
