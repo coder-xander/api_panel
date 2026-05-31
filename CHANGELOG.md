@@ -1,5 +1,17 @@
 # Changelog
 
+## [v0.3.2] — 2026-06-01
+
+### 修复
+- **窗口圆角透明**：移除 Electron 主进程 `backgroundColor`，圆角边缘不再显示黑色/深绿底色
+- 背景色从 `body` 移至 `#app`，`body`/`html` 设置为 `transparent`
+
+### 新增
+- **窗口彩虹呼吸边框**：2px 半透明彩虹渐变边框，跑马灯动画滚动
+- 使用 `repeating-linear-gradient` + `mask` 实现，不影响窗口内容和交互
+
+---
+
 ## [v0.3.1] — 2026-05-31
 
 ### 改进
