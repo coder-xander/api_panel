@@ -14,3 +14,8 @@
 - 平台设置弹窗 (别名/API Key)
 - 窗口控制按钮 (最小化/最大化/关闭)
 - 一键直达各平台网页控制台
+
+### 改动
+- Vue 3 组件化重构：PlatformCard / SettingsModal 独立组件
+- HTML 模板全部迁入 Vue template 选项，index.html 仅留挂载点 `<div id="app">`
+- 清理调试/测试文件 8 个
