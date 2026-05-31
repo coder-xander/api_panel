@@ -1,7 +1,7 @@
 // ⚡ API 聚合面板 — Electron 主进程
 // 职责：IPC 处理余额查询、配置管理、窗口生命周期
 
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
@@ -117,6 +117,7 @@ function parseLumai(data) {
     balances: [{ currency: 'USD', total: balance }],
   };
 
+  // ─── 今日/最近用量（来自 daily_usage） ───
   if (usage) {
     result.today = {
       date: usage.date,
@@ -127,6 +128,45 @@ function parseLumai(data) {
       is_today: usage === todayUsage,
     };
   }
+
+  // ─── 实时今日用量（usage.today，比 daily_usage 更准） ───
+  if (data.usage && data.usage.today) {
+    const t = data.usage.today;
+    result.live_today = {
+      requests: t.requests || 0,
+      cost: parseFloat(t.cost || 0),
+      actual_cost: parseFloat(t.actual_cost || 0),
+      total_tokens: t.total_tokens || 0,
+      input_tokens: t.input_tokens || 0,
+      output_tokens: t.output_tokens || 0,
+      cache_read_tokens: t.cache_read_tokens || 0,
+      cache_write_tokens: t.cache_creation_tokens || 0,
+    };
+  }
+
+  // ─── 终身统计 ───
+  if (data.usage && data.usage.total) {
+    const t = data.usage.total;
+    result.lifetime = {
+      requests: t.requests || 0,
+      cost: parseFloat(t.cost || 0),
+      actual_cost: parseFloat(t.actual_cost || 0),
+      total_tokens: t.total_tokens || 0,
+    };
+  }
+
+  // ─── 按模型拆分 ───
+  if (data.model_stats && data.model_stats.length > 0) {
+    result.models = data.model_stats.map(m => ({
+      model: m.model || 'unknown',
+      requests: m.requests || 0,
+      cost: parseFloat(m.cost || 0),
+      actual_cost: parseFloat(m.actual_cost || 0),
+      total_tokens: m.total_tokens || 0,
+      cache_read_tokens: m.cache_read_tokens || 0,
+    }));
+  }
+
   return result;
 }
 
@@ -317,6 +357,15 @@ function registerIpcHandlers() {
 
   // ─── 应用信息 ───
   ipcMain.handle('get-version', () => PACKAGE.version);
+
+  // ─── 外部链接（系统默认浏览器） ───
+  ipcMain.handle('open-external', (_event, url) => {
+    if (!url || typeof url !== 'string') return;
+    // 只允许 http/https，防止 shell.openExternal 被滥用
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      shell.openExternal(url);
+    }
+  });
 
   // ─── 窗口控制（无边框自定义标题栏） ───
   ipcMain.handle('window-minimize', () => {

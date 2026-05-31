@@ -30,4 +30,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 应用信息
   platform: process.platform,
   getVersion: () => ipcRenderer.invoke('get-version'),
+
+  // 在系统默认浏览器打开链接
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
 });

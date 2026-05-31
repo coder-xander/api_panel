@@ -561,3 +561,56 @@ body {
   font-weight: 500;
   font-size: 0.85rem;
 }
+
+/* ─── 详细数据区域（模型拆分 / 终身统计 / 今日实时） ─── */
+.detail-section {
+  margin-top: 14px;
+  padding: 12px;
+  background: rgba(163, 255, 71, 0.04);
+  border: 1px solid rgba(163, 255, 71, 0.10);
+  border-radius: var(--radius-sm);
+}
+.section-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent-dim);
+  margin-bottom: 8px;
+}
+.mini-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 8px;
+}
+.mini-grid .label {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+}
+.mini-grid .value {
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.82rem;
+}
+
+/* 模型列表 */
+.model-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.model-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 8px;
+  background: rgba(42, 90, 42, 0.15);
+  border-radius: 5px;
+}
+.model-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.model-meta {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}

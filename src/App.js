@@ -162,7 +162,6 @@ createApp({
     />
 
     <footer class="footer">
-      <span>数据存储于 <code>~/.config/api-panel/keys.json</code></span>
       <span class="footer-dot">·</span>
       <span>每 30 分钟自动刷新</span>
       <span class="footer-dot">·</span>
