@@ -113,12 +113,16 @@ body {
   flex-shrink: 0;
   z-index: 5;
   position: relative;
+  -webkit-app-region: drag;
+  app-region: drag;
 }
 .status-bar-left {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-primary);
   letter-spacing: -0.01em;
+  -webkit-app-region: drag;
+  app-region: drag;
 }
 .status-bar-right {
   display: flex;
@@ -126,6 +130,12 @@ body {
   gap: 12px;
   font-size: 0.75rem;
   color: var(--text-secondary);
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+.status-bar-right button {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
 }
 .status-bar-right .version {
   opacity: 0.5;
@@ -154,45 +164,50 @@ body {
 /* ─── 图标方块（单个 App 图标，带网格线分隔） ─── */
 .platform-list-item {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: stretch;
+  gap: 10px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.15s ease, background 0.2s, box-shadow 0.2s, opacity 0.2s;
-  padding: 16px 20px;
+  padding: 14px 18px;
   position: relative;
-  border: 1px solid rgba(163, 255, 71, 0.14);
+  border: 1px solid rgba(163, 255, 71, 0.08);
   border-radius: var(--radius-sm);
   background: var(--bg-card);
   user-select: none;
+  min-height: 76px;
 }
 .platform-list-item:hover {
   background: var(--bg-card-hover);
-  border-color: rgba(163, 255, 71, 0.3);
+  border-color: rgba(163, 255, 71, 0.2);
+  box-shadow: 0 0 20px rgba(163, 255, 71, 0.06), inset 0 0 30px rgba(163, 255, 71, 0.02);
 }
 .platform-list-item:active {
   transform: scale(0.98);
 }
+.platform-list-item.no-key {
+  opacity: 0.55;
+}
 
 /* ─── 拖拽手柄 ─── */
 .drag-handle {
-  font-size: 1rem;
-  color: var(--text-muted);
+  font-size: 0.9rem;
+  color: rgba(90, 106, 85, 0.3);
   opacity: 0;
   transition: opacity 0.2s;
   cursor: grab;
-  padding: 4px 8px;
+  padding: 2px 4px;
   border-radius: 4px;
   z-index: 3;
   line-height: 1;
+  user-select: none;
 }
 .platform-list-item:hover .drag-handle {
-  opacity: 0.6;
+  opacity: 0.5;
 }
 .drag-handle:hover {
   opacity: 1 !important;
-  background: rgba(163, 255, 71, 0.1);
-  color: var(--accent);
+  color: var(--text-muted);
 }
 .drag-handle:active {
   cursor: grabbing;
@@ -211,162 +226,235 @@ body {
 
 /* 图标主体 */
 .platform-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   position: relative;
-  transition: box-shadow 0.2s, transform 0.15s;
-  /* 毛玻璃风格 */
-  background: linear-gradient(135deg, rgba(26, 58, 26, 0.7), rgba(17, 26, 17, 0.9));
-  border: 1px solid rgba(163, 255, 71, 0.12);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
+  transition: box-shadow 0.2s;
+  background: linear-gradient(135deg, rgba(26, 58, 26, 0.6), rgba(17, 26, 17, 0.85));
+  border: 1px solid rgba(163, 255, 71, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   overflow: hidden;
 }
 .platform-icon-img {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   object-fit: contain;
   display: block;
 }
 .platform-list-item:hover .platform-icon {
-  box-shadow: 0 4px 20px rgba(163, 255, 71, 0.15);
-  border-color: rgba(163, 255, 71, 0.3);
+  box-shadow: 0 0 20px rgba(163, 255, 71, 0.15), 0 4px 16px rgba(163, 255, 71, 0.1);
+  border-color: rgba(163, 255, 71, 0.25);
 }
 
-/* 平台信息 */
-.platform-info {
+/* ─── 卡片内容区 ─── */
+.card-body {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.card-row {
+  display: flex;
+  align-items: center;
   min-width: 0;
 }
-.platform-name {
-  font-size: 0.95rem;
+
+/* ── 第一行：名称 + 余额 ── */
+.top-row {
+  justify-content: space-between;
+  gap: 10px;
+}
+.name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+}
+.card-name {
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-primary);
-  line-height: 1.3;
-}
-.platform-summary {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--accent);
-  white-space: nowrap;
-  text-align: right;
-}
-
-/* 第二行：alias + 相对时间 */
-.platform-meta {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  margin-top: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: -0.01em;
 }
-.meta-alias {
+.card-domain {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
+  flex-shrink: 1;
+}
+
+.bal-group {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.bal-num {
+  font-size: 0.92rem;
+  font-weight: 650;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.bal-currency {
+  font-size: 0.5rem;
+  font-weight: 600;
+  color: rgba(163, 255, 71, 0.4);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.bal-empty .bal-num {
+  font-size: 0.72rem;
+  font-weight: 500;
   color: var(--text-muted);
 }
+
+/* ── 第二行：时间 + 今日用量 ── */
+.meta-row {
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+}
+.meta-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
 .meta-time {
-  color: var(--accent-dim);
-  opacity: 0.7;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--accent);
+  white-space: nowrap;
+  opacity: 0.85;
+  text-shadow: 0 0 8px rgba(163, 255, 71, 0.15);
+}
+.meta-time.stale {
+  color: var(--text-muted);
+  opacity: 0.6;
+  text-shadow: none;
+}
+.meta-stale {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  opacity: 0.4;
+}
+
+.today-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--accent);
+  padding: 0 8px 0 4px;
+  border-radius: 10px;
+  background: rgba(163, 255, 71, 0.08);
+  box-shadow: 0 0 12px rgba(163, 255, 71, 0.06);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+  flex-shrink: 1;
+  line-height: 1.6;
+}
+.today-icon {
+  font-size: 0.65rem;
+  line-height: 1;
+}
+
+/* ── 第三行：进度条（装饰线） ── */
+.bar-row {
+  margin-top: 2px;
+}
+.progress-line {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 6px;
+}
+.progress-track {
+  width: 100%;
+  height: 2px;
+  background: rgba(163, 255, 71, 0.04);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: rgba(163, 255, 71, 0.25);
+  box-shadow: 0 0 8px rgba(163, 255, 71, 0.12);
+  transition: width 0.5s ease;
 }
 
 /* 删除按钮（hover 显示） */
 .card-remove-btn {
   opacity: 0;
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   border: none;
-  background: rgba(255, 77, 77, 0.15);
-  color: var(--danger);
-  font-size: 0.65rem;
+  background: transparent;
+  color: rgba(90, 106, 85, 0.4);
+  font-size: 0.55rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.15s;
   flex-shrink: 0;
+  align-self: center;
 }
 .platform-list-item:hover .card-remove-btn {
-  opacity: 0.6;
+  opacity: 0.4;
 }
 .card-remove-btn:hover {
   opacity: 1 !important;
-  background: rgba(255, 77, 77, 0.3);
-  transform: scale(1.1);
-}
-
-/* 余额金额 */
-.platform-amount {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--accent);
-  white-space: nowrap;
+  background: rgba(255, 77, 77, 0.12);
+  color: var(--danger);
 }
 
 /* 状态角标 */
 .icon-badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
-  width: 16px;
-  height: 16px;
+  top: -3px;
+  right: -3px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   border: 2px solid var(--bg-primary);
   z-index: 2;
+  transition: background 0.2s;
 }
-.icon-badge.active { background: var(--success); }
-.icon-badge.inactive { background: var(--text-muted); }
+.icon-badge.active { background: var(--accent); box-shadow: 0 0 8px rgba(163, 255, 71, 0.4); }
+.icon-badge.inactive { background: rgba(90, 106, 85, 0.5); }
 .icon-badge.loading {
   background: var(--warning);
-  animation: pulse-badge 1s ease infinite;
+  animation: pulse-badge 0.8s ease infinite;
 }
 @keyframes pulse-badge {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-/* 余额角标（数字小标签） */
-.icon-amount {
-  position: absolute;
-  bottom: -2px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(10, 15, 10, 0.9);
-  border: 1px solid rgba(163, 255, 71, 0.25);
-  border-radius: 10px;
-  padding: 2px 8px;
-  font-size: 0.6rem;
-  font-weight: 600;
-  color: var(--accent);
-  white-space: nowrap;
-  z-index: 2;
-  backdrop-filter: blur(4px);
-}
-
-/* 图标下方名称 */
-.icon-label {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  text-align: center;
-  max-width: 100px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1.3;
-}
-
-/* 余额摘要行 */
-.icon-summary {
-  font-size: 0.68rem;
-  font-weight: 500;
-  color: var(--accent-dim);
-  text-align: center;
-  margin-top: -2px;
+  50% { opacity: 0.3; }
 }
 
 /* ══════════════════════════════════════

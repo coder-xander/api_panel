@@ -82,6 +82,7 @@ const WelcomeWizard = {
         this.$emit('add-card', plat.id);
       } else {
         this.step = 2;
+        // Cookie 平台需要用户手动点击提取，不做自动提取
       }
     },
 

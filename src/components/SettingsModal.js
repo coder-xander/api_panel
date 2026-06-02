@@ -16,6 +16,7 @@ const SettingsModal = {
       showCookie: false,
       extracting: false,
       extractError: '',
+      step: 'open', // 'open' | 'login' | 'done'
       defaultBrowser: '浏览器',
     };
   },
@@ -35,7 +36,8 @@ const SettingsModal = {
         this.showKey = false;
         this.showCookie = false;
         this.extractError = '';
-        if (plat.auth_type === 'cookie') this.fetchDefaultBrowser();
+        this.step = 'open';
+        // Cookie 鉴权平台需要用户手动提取，不做自动提取
       }
     },
   },
@@ -63,11 +65,20 @@ const SettingsModal = {
       try {
         const resp = await window.electronAPI.updatePlatform(instanceId, updates);
         if (resp.status === 'ok') {
-          this.$emit('saved', { instanceId, hasNewKey: !!(this.formKey || this.formCookie) });
+          const hasNewCredential = this.isCookieAuth ? !!this.formCookie : !!this.formKey;
+          this.$emit('saved', { instanceId, hasNewKey: hasNewCredential });
         }
       } catch (e) {
         console.error('Save failed:', e);
       }
+    },
+
+    async openMimoInBrowser() {
+      // 在系统默认浏览器中打开 MiMo 控制台
+      try {
+        await window.electronAPI.openExternal('https://platform.xiaomimimo.com/console/plan-manage');
+        this.step = 'login'; // 切换到「已登录，提取 Cookie」步骤
+      } catch (_) { /* ignore */ }
     },
 
     async extractCookie() {
@@ -78,9 +89,9 @@ const SettingsModal = {
         const result = await window.electronAPI.mimoExtractCookie();
         if (result.cookie) {
           this.formCookie = result.cookie;
-          if (result.browser) this.defaultBrowser = result.browser;
+          this.step = 'done';
         } else {
-          this.extractError = result.error || '提取失败';
+          this.extractError = result.error || '提取失败 — 请确认已在默认浏览器中登录 MiMo';
         }
       } catch (e) {
         this.extractError = e.message || '提取失败';
@@ -118,12 +129,21 @@ const SettingsModal = {
             <template v-if="isCookieAuth">
               <label class="field">
                 <span class="field-label">小米账号 Cookie</span>
-                <div class="field-hint">
-                  从 {{ defaultBrowser }} 自动提取（需先在 {{ defaultBrowser }} 中登录 platform.xiaomimimo.com）
+                <div class="field-hint" v-if="step === 'open'">
+                  ⚠️ Cookie 过期？先在默认浏览器中登录 MiMo，再回来提取。
                 </div>
-                <div style="margin-bottom:10px">
-                  <button type="button" class="btn-primary" @click="extractCookie" :disabled="extracting" style="width:100%">
-                    {{ extracting ? '⏳ 正在从 ' + defaultBrowser + ' 提取...' : '🔑 从 ' + defaultBrowser + ' 一键提取 Cookie' }}
+                <div class="field-hint" v-else-if="step === 'login'">
+                  已在浏览器中登录 MiMo？点击下方按钮提取 Cookie。
+                </div>
+                <div class="field-hint" v-else-if="step === 'done'">
+                  ✅ Cookie 提取成功，点击保存即可使用。
+                </div>
+                <div style="margin-bottom:10px;display:flex;gap:8px">
+                  <button type="button" class="btn-primary" @click="openMimoInBrowser" style="flex:1" v-if="step === 'open'">
+                    🌐 在默认浏览器中打开 MiMo
+                  </button>
+                  <button type="button" class="btn-primary" @click="extractCookie" :disabled="extracting" style="flex:1" v-else>
+                    {{ extracting ? '⏳ 提取中...' : (step === 'done' ? '🔄 重新提取' : '🔑 提取 Cookie') }}
                   </button>
                 </div>
                 <div v-if="extractError" style="color:var(--danger);font-size:0.8rem;margin-bottom:8px">

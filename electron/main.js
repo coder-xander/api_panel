@@ -465,7 +465,7 @@ async function queryBalance(platformId, apiKey, cookie) {
       return { status: 'ok', data, raw };
     } catch (e) {
       if (e.code === 401) {
-        return { status: 'error', message: 'Cookie 已过期，请重新登录小米账号并更新 Cookie' };
+        return { status: 'error', message: 'Cookie 已过期 — 请先在浏览器中重新登录 platform.xiaomimimo.com，然后回到面板重新提取 Cookie' };
       }
       return { status: 'error', code: e.code, message: e.message };
     }
@@ -789,22 +789,27 @@ function registerIpcHandlers() {
     }
   });
 
-  // ─── MiMo Cookie：从默认浏览器自动提取 ───
+  // ─── MiMo Cookie：通过 libsecret 直接解密 Brave Cookie 数据库提取 ───
+  // 不再使用 CDP（Chrome DevTools Protocol），改用 pycookiecheat 从 SQLite 数据库
+  // 直接解密 AES-128-GCM 加密的 cookie 值，不需要启动浏览器或暴露 CDP 端口。
   ipcMain.handle('mimo-extract-cookie', () => {
     const { execFile } = require('child_process');
-    const scriptPath = path.join(ROOT.replace('app.asar', 'app.asar.unpacked'), 'scripts', 'extract_mimo_cookies.py');
+    const scriptPath = path.join(
+      ROOT.replace('app.asar', 'app.asar.unpacked'),
+      'scripts',
+      'extract_mimo_cookies.py',
+    );
 
     return new Promise((resolve) => {
       execFile('python3', [scriptPath], { timeout: 15000 }, (err, stdout, stderr) => {
-        if (err) {
-          resolve({ cookie: null, error: stderr || err.message });
-          return;
-        }
         try {
           const result = JSON.parse(stdout.trim());
           resolve(result);
-        } catch (e) {
-          resolve({ cookie: null, error: `解析输出失败: ${stdout}` });
+        } catch (_) {
+          resolve({
+            cookie: null,
+            error: stderr?.trim() || err?.message || 'Cookie 提取脚本执行失败',
+          });
         }
       });
     });

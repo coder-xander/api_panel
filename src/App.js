@@ -367,6 +367,7 @@ createApp({
             :platform="p"
             :balance="balances[p.id]"
             :status="statuses[p.id]"
+            :today-usage="todayUsages[p.id]"
             :dragging="draggingId === p.id"
             :drag-over="dragOverId === p.id"
             :last-updated="lastUpdated[p.id]"
