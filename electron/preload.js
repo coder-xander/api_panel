@@ -4,17 +4,23 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  // 获取平台列表（含 masked key、是否已配置等）
+  // 获取平台实例列表（每个实例有唯一 id 和 type）
   getPlatforms: () => ipcRenderer.invoke('get-platforms'),
 
-  // 刷新单个平台余额
-  refreshPlatform: (platId) => ipcRenderer.invoke('refresh-platform', platId),
+  // 刷新单个平台实例余额
+  refreshPlatform: (instanceId) => ipcRenderer.invoke('refresh-platform', instanceId),
 
-  // 刷新全部平台余额
+  // 刷新全部平台实例余额
   refreshAll: () => ipcRenderer.invoke('refresh-all'),
 
-  // 更新平台配置（alias / key / enabled）
-  updatePlatform: (platId, updates) => ipcRenderer.invoke('update-platform', platId, updates),
+  // 更新平台实例配置（alias / key / enabled）
+  updatePlatform: (instanceId, updates) => ipcRenderer.invoke('update-platform', instanceId, updates),
+
+  // 添加新的平台实例
+  addPlatformInstance: (type) => ipcRenderer.invoke('add-platform-instance', type),
+
+  // 移除平台实例（从 config 和 layout 中同时移除）
+  removePlatformInstance: (instanceId) => ipcRenderer.invoke('remove-platform-instance', instanceId),
 
   // ─── 窗口控制（无边框自定义标题栏） ───
   windowMinimize: () => ipcRenderer.invoke('window-minimize'),
@@ -33,4 +39,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // 在系统默认浏览器打开链接
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
+
+  // MiMo Cookie：从默认浏览器自动提取
+  mimoExtractCookie: () => ipcRenderer.invoke('mimo-extract-cookie'),
+
+  // 获取默认浏览器名称
+  getDefaultBrowser: () => ipcRenderer.invoke('get-default-browser'),
+
+  // 布局管理
+  getLayout: () => ipcRenderer.invoke('get-layout'),
+  saveLayout: (layout) => ipcRenderer.invoke('save-layout', layout),
+  getPlatformDefs: () => ipcRenderer.invoke('get-platform-defs'),
+
+  // 动态调整窗口高度以适配内容
+  resizeToContent: (height) => ipcRenderer.invoke('resize-to-content', height),
+
+  // 检查是否首次启动
+  isFirstLaunch: () => ipcRenderer.invoke('is-first-launch'),
 });

@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
-<!-- CSP omitted: Electron contextIsolation + nodeIntegration:false provides sufficient security --><script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -17,9 +17,14 @@
   <div id="app"></div>
 </div>
 
+<!-- 图标映射 -->
+<script src="components/IconMap.js"></script>
 <!-- Vue 组件 -->
 <script src="components/PlatformCard.js"></script>
+<script src="components/DetailSheet.js"></script>
 <script src="components/SettingsModal.js"></script>
+<script src="components/AddCardModal.js"></script>
+<script src="components/WelcomeWizard.js"></script>
 <script src="App.js"></script>
 </body>
 </html>

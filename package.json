@@ -1,16 +1,17 @@
 {
   "name": "api-panel",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "AI API 聚合面板 — 多平台余额/用量查询 (Electron)",
   "author": "Hermes <hermes@localhost>",
   "homepage": "https://github.com/hermes/api-panel",
   "main": "electron/main.js",
   "scripts": {
-    "start": "electron . --no-sandbox --disable-setuid-sandbox --enable-transparent-visuals --disable-gpu",
+    "start": "electron . --no-sandbox --disable-setuid-sandbox --enable-transparent-visuals",
     "build": "electron-builder",
     "build:linux": "electron-builder --linux",
     "build:win": "electron-builder --win",
-    "build:all": "electron-builder --linux --win"
+    "build:all": "electron-builder --linux --win",
+    "reinstall": "rm -f dist/*.deb && npm run build:linux && pkill -f 'api-panel' 2>/dev/null; sleep 1; sudo dpkg -i dist/api-panel_*.deb"
   },
   "build": {
     "appId": "com.hermes.api-panel",
@@ -20,7 +21,9 @@
       "target": [
         {
           "target": "deb",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "category": "Utility",
@@ -29,8 +32,7 @@
       "executableArgs": [
         "--no-sandbox",
         "--disable-setuid-sandbox",
-        "--enable-transparent-visuals",
-        "--disable-gpu"
+        "--enable-transparent-visuals"
       ]
     },
     "win": {
@@ -50,12 +52,19 @@
     },
     "files": [
       "electron/**",
-      "src/**"
+      "src/**",
+      "scripts/**"
+    ],
+    "asarUnpack": [
+      "scripts/**"
     ],
     "extraResources": []
   },
   "devDependencies": {
     "electron": "^33.0.0",
     "electron-builder": "^25.0.0"
+  },
+  "dependencies": {
+    "gridstack": "^12.6.0"
   }
 }
