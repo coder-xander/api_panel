@@ -2,7 +2,7 @@
 
 多平台 AI API 余额/用量一站式查询面板。支持 DeepSeek、Kimi CN、小米 MiMo、Lumai 四个平台。
 
-![ropedia 暗色美学](https://img.shields.io/badge/theme-ropedia%20dark-%230a0f0a?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiByeD0iNCIgZmlsbD0iIzBhMGYwYSIvPjxyZWN0IHdpZHRoPSI2IiBoZWlnaHQ9IjYiIHg9IjUiIHk9IjUiIGZpbGw9IiNhM2ZmNDciLz48L3N2Zz4=)
+![暗色主题](https://img.shields.io/badge/theme-dark-%230a0f0a?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiByeD0iNCIgZmlsbD0iIzBhMGYwYSIvPjxyZWN0IHdpZHRoPSI2IiBoZWlnaHQ9IjYiIHg9IjUiIHk9IjUiIGZpbGw9IiNhM2ZmNDciLz48L3N2Zz4=)
 ![Electron](https://img.shields.io/badge/electron-33.x-47848f?logo=electron)
 ![Vue](https://img.shields.io/badge/vue-3.x-4fc08d)
 ![Node.js](https://img.shields.io/badge/node-22.x-339933?logo=node.js)
@@ -19,7 +19,7 @@
 | 🏷️ 别名系统 | 每个平台可自定义别名 |
 | 📡 自动注入 | 首次启动自动从 `~/.hermes/.env` 读取已有 Key |
 | ⏱️ 自动刷新 | 每 30 分钟自动刷新一次余额 |
-| 🎨 ropedia 暗色 | 深绿底色 + 青柠绿 Inter Tight 字体 |
+| 🎨 暗色主题 | 深绿底色 + 青柠绿 Inter Tight 字体 |
 | 🔗 控制台直达 | 每个平台卡片底部一键跳转官方控制台 |
 | 🖥️ Electron 桌面应用 | 前后端一体，纯 Node.js 栈 |
 
@@ -48,7 +48,7 @@ api_panel/
 │   └── keys.json          # 平台 API Key 和别名（自动从 ~/.hermes/.env 注入）
 ├── static/
 │   ├── app.js             # Vue 3 前端逻辑
-│   └── style.css          # ropedia 暗色样式
+│   └── style.css          # 暗色样式
 └── templates/
     └── index.html         # 单页 HTML
 ```
