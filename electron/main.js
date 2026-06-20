@@ -1,4 +1,4 @@
-// ⚡ API 聚合面板 — Electron 主进程
+﻿// ⚡ API 聚合面板 — Electron 主进程
 // 职责：IPC 处理余额查询、配置管理、窗口生命周期
 
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
@@ -13,16 +13,17 @@ const path = require('path');
 const fs = require('fs');
 const https = require('https');
 
-const HOME = require('os').homedir();
 // __dirname = electron/，项目根在上一级
 const ROOT = path.join(__dirname, '..');
 const PACKAGE = require(path.join(ROOT, 'package.json'));
 // 敏感配置统一存放到用户配置目录，不写死在项目里
-const CONFIG_DIR = path.join(HOME, '.config', 'api-panel');
+const CONFIG_DIR = process.env.APPDATA
+  ? path.join(process.env.APPDATA, 'api-panel')
+  : path.join(require('os').homedir(), '.config', 'api-panel');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'keys.json');
 const APP_ENV_FILE = path.join(CONFIG_DIR, '.api_panel.env');
-const ENV_FILE = path.join(HOME, '.hermes', '.env');
-const OPENCLAW_FILE = path.join(HOME, '.openclaw', 'openclaw.json');
+const ENV_FILE = path.join(require('os').homedir(), '.hermes', '.env');
+const OPENCLAW_FILE = path.join(require('os').homedir(), '.openclaw', 'openclaw.json');
 const STATE_FILE = path.join(CONFIG_DIR, 'state.json');
 
 const CREDENTIAL_SOURCE_LABELS = {
@@ -393,6 +394,7 @@ function parseLumai(data) {
   return result;
 }
 
+
 function parseOpenRouter(data) {
   const d = data.data || data;
   const usage = d.usage || 0;
@@ -463,7 +465,6 @@ function httpsGet(hostname, path, apiKey) {
 }
 
 
-
 async function queryBalance(platformId, apiKey) {
   const plat = PLATFORM_DEFS[platformId];
   if (!plat.hostname || !plat.parser) {
@@ -474,16 +475,28 @@ async function queryBalance(platformId, apiKey) {
     };
   }
 
-  // 标准 Bearer token 鉴权
+  if (!apiKey) {
+    return {
+      status: 'no_api',
+      message: `请为 ${plat.name} 配置 API Key`,
+      console_url: plat.console_url,
+    };
+  }
   try {
     const raw = await httpsGet(plat.hostname, plat.path, apiKey);
     const parser = PARSERS[plat.parser];
     const data = parser ? parser(raw) : raw;
     return { status: 'ok', data, raw };
   } catch (e) {
+    if (e.code === 401) {
+      return { status: 'error', message: `${plat.name} API Key 无效或已过期` };
+    }
     return { status: 'error', code: e.code, message: e.message };
   }
 }
+
+// ─── Cookie 鉴权的 HTTP 请求（用于 MiMo 等需要登录态的平台） ───
+
 
 // ─── 从 OpenClaw 配置读取 API Key ───
 function loadOpenclawKeys() {
@@ -633,6 +646,7 @@ function registerIpcHandlers() {
       if (!platDef) continue;
 
       const key = instData.key || '';
+
 
       result.push({
         id: instanceId,       // 实例唯一 ID，如 "deepseek#1"
@@ -808,6 +822,42 @@ function registerIpcHandlers() {
       shell.openExternal(url);
     }
   });
+
+  // ─── 获取默认浏览器名称 ───
+  ipcMain.handle('get-default-browser', () => {
+    const { execFileSync } = require('child_process');
+    const platform = process.platform;
+    try {
+      if (platform === 'win32') {
+        const result = execFileSync('powershell', [
+          '-NoProfile', '-Command',
+          '(Get-ItemProperty -Path "HKCU:\\Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\http\\UserChoice").ProgId'
+        ], { timeout: 3000, encoding: 'utf-8' }).trim();
+        const map = {
+          'ChromeHTML': 'Chrome',
+          'BraveHTML': 'Brave',
+          'MSEdgeHTM': 'Edge',
+          'FirefoxURL-308046B0AF4A39CB': 'Firefox',
+          'OperaStable': 'Opera',
+          'VivaldiHTM': 'Vivaldi',
+        };
+        return map[result] || result;
+      } else {
+        const desktop = execFileSync('xdg-settings', ['get', 'default-web-browser'], { timeout: 3000, encoding: 'utf-8' }).trim();
+        const map = {
+          'brave-browser.desktop': 'Brave', 'brave-browser-beta.desktop': 'Brave Beta',
+          'google-chrome.desktop': 'Chrome', 'google-chrome-stable.desktop': 'Chrome',
+          'chromium-browser.desktop': 'Chromium', 'chromium.desktop': 'Chromium',
+          'microsoft-edge.desktop': 'Edge', 'microsoft-edge-stable.desktop': 'Edge',
+          'vivaldi-stable.desktop': 'Vivaldi',
+          'firefox.desktop': 'Firefox', 'firefox-esr.desktop': 'Firefox ESR',
+        };
+        return map[desktop] || desktop.replace('.desktop', '');
+      }
+    } catch (_) {
+      return platform === 'win32' ? 'Unknown' : 'Unknown';
+    }
+  })
 
   // ─── 窗口控制（无边框自定义标题栏） ───
   ipcMain.handle('window-minimize', () => {

@@ -1,4 +1,4 @@
-node_modules/
+﻿node_modules/
 dist/
 .venv/
 __pycache__/
@@ -34,3 +34,7 @@ build/
 
 # 日志
 *.log
+
+# pnpm
+pnpm-lock.yaml
+pnpm-workspace.yaml

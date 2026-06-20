@@ -1,4 +1,4 @@
-// ⚡ API 聚合面板 — Electron preload 脚本
+﻿// ⚡ API 聚合面板 — Electron preload 脚本
 // 通过 contextBridge 安全暴露 IPC 接口给 Vue 前端
 
 const { contextBridge, ipcRenderer } = require('electron');

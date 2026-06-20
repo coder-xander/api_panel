@@ -27,7 +27,7 @@
   --radius-sm: 12px;
   --radius-lg: 24px;
   --radius-xl: 32px;
-  --font: 'Inter Tight', system-ui, -apple-system, sans-serif;
+  --font: 'Inter Tight', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
 
   --icon-size: 88px;
   --grid-cols: 4;
