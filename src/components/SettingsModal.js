@@ -15,7 +15,10 @@ const SettingsModal = {
       showKey: false,
       showCookie: false,
       extracting: false,
+      importingSource: '',
       extractError: '',
+      importError: '',
+      importMessage: '',
       step: 'open', // 'open' | 'login' | 'done'
       defaultBrowser: '浏览器',
     };
@@ -36,6 +39,9 @@ const SettingsModal = {
         this.showKey = false;
         this.showCookie = false;
         this.extractError = '';
+        this.importError = '';
+        this.importMessage = '';
+        this.importingSource = '';
         this.step = 'open';
         // Cookie 鉴权平台需要用户手动提取，不做自动提取
       }
@@ -70,6 +76,28 @@ const SettingsModal = {
         }
       } catch (e) {
         console.error('Save failed:', e);
+      }
+    },
+
+    async importCredential(source) {
+      const instanceId = this.platform?.id;
+      if (!instanceId) return;
+      this.importingSource = source;
+      this.importError = '';
+      this.importMessage = '';
+
+      try {
+        const resp = await window.electronAPI.importPlatformCredential(instanceId, source);
+        if (resp.status === 'ok') {
+          this.importMessage = `已从 ${resp.source} 导入 ${resp.env_key}，并保存到 API Panel 自己的 .api_panel.env`;
+          this.$emit('saved', { instanceId, hasNewKey: true });
+        } else {
+          this.importError = resp.message || '导入失败';
+        }
+      } catch (e) {
+        this.importError = e.message || '导入失败';
+      } finally {
+        this.importingSource = '';
       }
     },
 
@@ -125,6 +153,11 @@ const SettingsModal = {
               <input type="text" v-model="formAlias" :placeholder="'给这个实例起个名字（默认: ' + (platform?.name || '') + ')'">
             </label>
 
+            <div v-if="platform?.has_key" class="credential-status">
+              <span>当前凭据来源：{{ platform?.detected_source || 'API Panel (.api_panel.env)' }}</span>
+              <code v-if="platform?.credential_env">{{ platform.credential_env }}</code>
+            </div>
+
             <!-- Cookie 鉴权平台（MiMo） -->
             <template v-if="isCookieAuth">
               <label class="field">
@@ -160,12 +193,30 @@ const SettingsModal = {
 
             <!-- 标准 Bearer token 平台 -->
             <template v-else>
+              <div class="import-section">
+                <div class="field-label">导入 API Key</div>
+                <div class="field-hint">
+                  从外部工具读取一次，然后统一保存到 API Panel 自己的 .api_panel.env。
+                </div>
+                <div class="import-actions">
+                  <button type="button" class="btn-secondary" @click="importCredential('hermes')" :disabled="!!importingSource">
+                    {{ importingSource === 'hermes' ? '导入中...' : '从 Hermes Agent 导入' }}
+                  </button>
+                  <button type="button" class="btn-secondary" @click="importCredential('openclaw')" :disabled="!!importingSource">
+                    {{ importingSource === 'openclaw' ? '导入中...' : '从 OpenClaw 导入' }}
+                  </button>
+                </div>
+                <div v-if="importError" class="inline-error">{{ importError }}</div>
+                <div v-if="importMessage" class="inline-success">{{ importMessage }}</div>
+              </div>
+
               <label class="field">
-                <span class="field-label">API Key</span>
+                <span class="field-label">手动填写 API Key</span>
                 <div class="key-input-wrap">
                   <input :type="showKey ? 'text' : 'password'" v-model="formKey" placeholder="输入 API Key" autocomplete="off">
                   <button type="button" class="toggle-key" @click="showKey = !showKey">{{ showKey ? '🙈' : '👁' }}</button>
                 </div>
+                <div class="field-hint">手动保存后也会写入 API Panel 自己的 .api_panel.env。</div>
               </label>
             </template>
 

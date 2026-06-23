@@ -23,6 +23,7 @@ createApp({
       nowTickTimer: null,   // 定时刷新 now 的计时器
       windowMaximized: false,
       appVersion: '0.0.0',
+      platformDefs: {},
       showWizard: false,
       detailPlatformId: null,  // 实例 ID
       // 拖拽状态
@@ -31,6 +32,8 @@ createApp({
       // 删除确认
       showConfirmDelete: false,
       confirmDeleteTarget: null,  // { id, name }
+      // 添加回滚：如果用户取消 SettingsModal 未保存，回滚刚添加的实例
+      pendingAddInstanceId: null,
     };
   },
 
@@ -54,14 +57,19 @@ createApp({
         }
       }
       // 补充 config 中不存在的平台类型
-      // （通过 PLATFORM_ICONS 获取完整列表）
-      for (const type of Object.keys(PLATFORM_ICONS)) {
+      const defs = Object.keys(this.platformDefs).length > 0
+        ? this.platformDefs
+        : Object.fromEntries(Object.keys(PLATFORM_ICONS).map(type => [type, {}]));
+      for (const [type, def] of Object.entries(defs)) {
         if (!seen.has(type)) {
           result.push({
             id: type,
             type,
-            name: type.charAt(0).toUpperCase() + type.slice(1),
+            name: def.name || type.charAt(0).toUpperCase() + type.slice(1),
             has_key: false,
+            auth_type: def.auth_type || 'bearer',
+            defaultW: def.defaultW || 1,
+            defaultH: def.defaultH || 1,
           });
         }
       }
@@ -81,12 +89,14 @@ createApp({
   async mounted() {
     try { this.appVersion = await window.electronAPI.getVersion(); } catch (_) {}
 
-    const [platforms, layout] = await Promise.all([
+    const [platforms, layout, platformDefs] = await Promise.all([
       window.electronAPI.getPlatforms(),
       window.electronAPI.getLayout(),
+      window.electronAPI.getPlatformDefs(),
     ]);
     this.platforms = platforms;
     this.layout = layout;
+    this.platformDefs = platformDefs;
 
     if (layout.length === 0 || !platforms.some(p => p.has_key)) {
       this.showWizard = true;
@@ -204,11 +214,30 @@ createApp({
       this.editingPlatform = { ...plat };
       this.showModal = true;
     },
-    closeModal() {
+    async closeModal() {
+      // 如果有待确认的添加实例，说明用户没有保存就关闭了——回滚
+      if (this.pendingAddInstanceId) {
+        const rollbackId = this.pendingAddInstanceId;
+        this.pendingAddInstanceId = null;
+
+        // 后端移除实例
+        await window.electronAPI.removePlatformInstance(rollbackId);
+
+        // 从本地 layout 移除
+        const idx = this.layout.findIndex(l => l.id === rollbackId);
+        if (idx >= 0) this.layout.splice(idx, 1);
+
+        // 刷新平台列表
+        this.platforms = await window.electronAPI.getPlatforms();
+      }
+
       this.showModal = false;
       this.editingPlatform = null;
     },
     async onSettingsSaved({ instanceId, hasNewKey }) {
+      // 用户保存了——清除待回滚标记，避免 closeModal 误回滚
+      this.pendingAddInstanceId = null;
+
       // 重新加载平台数据
       this.platforms = await window.electronAPI.getPlatforms();
       this.closeModal();
@@ -229,6 +258,9 @@ createApp({
       const resp = await window.electronAPI.addPlatformInstance(platformType);
       if (resp.error) return;
       const instanceId = resp.instanceId;
+
+      // 标记为待确认——如果用户取消 SettingsModal，需要回滚
+      this.pendingAddInstanceId = instanceId;
 
       // 2. 添加到 layout
       const platDef = this.platforms.find(p => p.type === platformType);
@@ -287,6 +319,8 @@ createApp({
 
     // 设置弹窗中点击「移除此实例」
     onSettingsDelete(instanceId) {
+      // 用户主动删除——清除待回滚标记，由 removeCard 流程处理清理
+      this.pendingAddInstanceId = null;
       this.closeModal();
       // 延迟一帧让设置弹窗关闭动画完成后再弹确认框
       setTimeout(() => this.removeCard(instanceId), 150);

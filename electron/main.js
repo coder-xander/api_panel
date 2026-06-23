@@ -20,9 +20,17 @@ const PACKAGE = require(path.join(ROOT, 'package.json'));
 // 敏感配置统一存放到用户配置目录，不写死在项目里
 const CONFIG_DIR = path.join(HOME, '.config', 'api-panel');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'keys.json');
+const APP_ENV_FILE = path.join(CONFIG_DIR, '.api_panel.env');
 const ENV_FILE = path.join(HOME, '.hermes', '.env');
 const OPENCLAW_FILE = path.join(HOME, '.openclaw', 'openclaw.json');
 const STATE_FILE = path.join(CONFIG_DIR, 'state.json');
+
+const CREDENTIAL_SOURCE_LABELS = {
+  app: 'API Panel (.api_panel.env)',
+  manual: '手动填写',
+  hermes: 'Hermes Agent',
+  openclaw: 'OpenClaw',
+};
 
 // ─── 窗口状态持久化 ───
 function loadWindowState() {
@@ -44,6 +52,113 @@ function saveWindowState(win) {
       maximized: win.isMaximized(),
     }, null, 2), 'utf-8');
   } catch (_) { /* ignore */ }
+}
+
+// ─── App 自己的 .env 凭据存储 ───
+function parseEnvFile(file) {
+  const vars = {};
+  if (!fs.existsSync(file)) return vars;
+  try {
+    const lines = fs.readFileSync(file, 'utf-8').split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) continue;
+      const eqIdx = trimmed.indexOf('=');
+      const key = trimmed.slice(0, eqIdx).trim();
+      let value = trimmed.slice(eqIdx + 1).trim();
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+      value = value.replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+      if (key) vars[key] = value;
+    }
+  } catch (_) { /* ignore corrupt env */ }
+  return vars;
+}
+
+function quoteEnvValue(value) {
+  return `"${String(value || '').replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/"/g, '\\"')}"`;
+}
+
+function updateAppEnv(updates) {
+  const vars = parseEnvFile(APP_ENV_FILE);
+  for (const [key, value] of Object.entries(updates)) {
+    if (value === undefined || value === null || value === '') delete vars[key];
+    else vars[key] = value;
+  }
+  if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR, { recursive: true });
+  const body = Object.keys(vars).sort().map((key) => `${key}=${quoteEnvValue(vars[key])}`).join('\n');
+  fs.writeFileSync(
+    APP_ENV_FILE,
+    `# API Panel credentials. Managed by the app.\n# You can edit this file manually if needed.\n${body}${body ? '\n' : ''}`,
+    'utf-8',
+  );
+}
+
+function credentialEnvName(instanceId, field) {
+  const safeId = String(instanceId).replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '').toUpperCase();
+  return `API_PANEL_${safeId}_${field.toUpperCase()}`;
+}
+
+function credentialFieldForPlatform(platDef) {
+  return platDef?.auth_type === 'cookie' ? 'cookie' : 'key';
+}
+
+function maskCredential(value) {
+  if (!value) return '';
+  return value.length > 10 ? value.slice(0, 6) + '****' + value.slice(-4) : '****';
+}
+
+function applyAppCredentials(config) {
+  const appEnv = parseEnvFile(APP_ENV_FILE);
+  for (const [instanceId, instData] of Object.entries(config.platforms || {})) {
+    const platDef = PLATFORM_DEFS[instData.type];
+    if (!platDef) continue;
+    const field = credentialFieldForPlatform(platDef);
+    const envName = credentialEnvName(instanceId, field);
+    if (appEnv[envName]) {
+      instData[field] = appEnv[envName];
+      instData.credential_env = envName;
+      instData.credential_source = instData.credential_source || CREDENTIAL_SOURCE_LABELS.app;
+    }
+  }
+}
+
+function migrateSecretsToAppEnv(config) {
+  let changed = false;
+  const updates = {};
+  const appEnv = parseEnvFile(APP_ENV_FILE);
+  for (const [instanceId, instData] of Object.entries(config.platforms || {})) {
+    for (const field of ['key', 'cookie']) {
+      if (!instData[field]) continue;
+      const envName = credentialEnvName(instanceId, field);
+      if (!appEnv[envName]) updates[envName] = instData[field];
+      delete instData[field];
+      instData.credential_source = instData.credential_source || CREDENTIAL_SOURCE_LABELS.app;
+      changed = true;
+    }
+  }
+  if (Object.keys(updates).length > 0) updateAppEnv(updates);
+  return changed;
+}
+
+function saveCredential(instanceId, field, value) {
+  updateAppEnv({ [credentialEnvName(instanceId, field)]: value });
+}
+
+function removeCredentials(instanceId) {
+  updateAppEnv({
+    [credentialEnvName(instanceId, 'key')]: '',
+    [credentialEnvName(instanceId, 'cookie')]: '',
+  });
+}
+
+function stripRuntimeCredentials(config) {
+  for (const instData of Object.values(config.platforms || {})) {
+    delete instData.key;
+    delete instData.cookie;
+  }
+  return config;
 }
 
 // ─── 平台定义 ───
@@ -496,6 +611,52 @@ function loadOpenclawKeys() {
   return keys;
 }
 
+function importCredentialFromSource(instanceId, source) {
+  const config = loadConfig();
+  const instData = config.platforms?.[instanceId];
+  if (!instData) return { status: 'error', message: '未找到这个平台实例' };
+
+  const platDef = PLATFORM_DEFS[instData.type];
+  if (!platDef) return { status: 'error', message: '未知平台类型' };
+  if (credentialFieldForPlatform(platDef) === 'cookie') {
+    return { status: 'error', message: `${platDef.name} 使用 Cookie 鉴权，请手动填写或使用专用提取按钮` };
+  }
+
+  let sourceVars = {};
+  if (source === 'hermes') {
+    sourceVars = parseEnvFile(ENV_FILE);
+  } else if (source === 'openclaw') {
+    sourceVars = loadOpenclawKeys();
+  } else {
+    return { status: 'error', message: '不支持的导入来源' };
+  }
+
+  const envKeys = platDef.env_keys || [];
+  const matchedKey = envKeys.find((key) => sourceVars[key]);
+  if (!matchedKey) {
+    return {
+      status: 'not_found',
+      message: `${CREDENTIAL_SOURCE_LABELS[source]} 中没有找到 ${platDef.name} 的 API Key`,
+      expected_keys: envKeys,
+    };
+  }
+
+  saveCredential(instanceId, 'key', sourceVars[matchedKey]);
+  delete instData.key;
+  delete instData.cookie;
+  instData.enabled = true;
+  instData.credential_source = CREDENTIAL_SOURCE_LABELS[source];
+  instData.credential_env = credentialEnvName(instanceId, 'key');
+  saveConfig(config);
+
+  return {
+    status: 'ok',
+    source: CREDENTIAL_SOURCE_LABELS[source],
+    env_key: matchedKey,
+    masked_key: maskCredential(sourceVars[matchedKey]),
+  };
+}
+
 // ─── 配置管理 ───
 
 // 生成实例 ID：type + 序号，如 "deepseek#1", "deepseek#2"
@@ -562,52 +723,17 @@ function loadConfig() {
   // ─── 迁移旧格式 → 多实例格式 ───
   migrateConfig(config);
 
-  // ─── 收集所有 env 来源的 key（Hermes .env + OpenClaw） ───
-  const envVars = {};
+  // ─── 旧版 keys.json 中的敏感字段迁移到 App 自己的 .api_panel.env ───
+  if (migrateSecretsToAppEnv(config)) saveConfig(config);
 
-  // 来源 1：Hermes .env
-  if (fs.existsSync(ENV_FILE)) {
-    const lines = fs.readFileSync(ENV_FILE, 'utf-8').split('\n');
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed.startsWith('#') || !trimmed.includes('=')) continue;
-      const eqIdx = trimmed.indexOf('=');
-      const k = trimmed.slice(0, eqIdx).trim();
-      const v = trimmed.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, '');
-      if (v) envVars[k] = v;
-    }
-  }
-
-  // 来源 2：OpenClaw 配置（不覆盖已有的 Hermes key）
-  const openclawKeys = loadOpenclawKeys();
-  for (const [k, v] of Object.entries(openclawKeys)) {
-    if (!envVars[k]) envVars[k] = v;
-  }
-
-  // ─── 自动注入：遍历所有平台的 env_keys 映射 ───
-  if (config.auto_load_env !== false) {
-    for (const [platId, platDef] of Object.entries(PLATFORM_DEFS)) {
-      const envKeys = platDef.env_keys || [];
-      // 检查该平台类型是否已有默认实例（#1）
-      const defaultInstance = `${platId}#1`;
-      if (config.platforms[defaultInstance]?.key) continue;
-      for (const envKey of envKeys) {
-        if (envVars[envKey]) {
-          config.platforms[defaultInstance] = config.platforms[defaultInstance] || {};
-          config.platforms[defaultInstance].type = platId;
-          config.platforms[defaultInstance].key = envVars[envKey];
-          config.platforms[defaultInstance].alias = config.platforms[defaultInstance].alias || platDef.name;
-          config.platforms[defaultInstance].detected_source = envKey;
-          break; // 取第一个匹配的 env key
-        }
-      }
-    }
-  }
+  // ─── 运行时只从 App 自己的 .api_panel.env 注入凭据 ───
+  applyAppCredentials(config);
   return config;
 }
 
 function saveConfig(config) {
   if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR, { recursive: true });
+  stripRuntimeCredentials(config);
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
 }
 
@@ -624,9 +750,6 @@ function registerIpcHandlers() {
 
       const key = instData.key || '';
       const cookie = instData.cookie || '';
-      const maskedKey = key.length > 10
-        ? key.slice(0, 6) + '****' + key.slice(-4)
-        : (key ? '****' : '');
       const hasCredential = platDef.auth_type === 'cookie' ? !!cookie : !!key;
 
       result.push({
@@ -635,14 +758,15 @@ function registerIpcHandlers() {
         name: platDef.name,   // 平台显示名
         alias: instData.alias || platDef.name,
         has_key: hasCredential,
-        masked_key: platDef.auth_type === 'cookie' ? (cookie ? '****Cookie****' : '') : maskedKey,
+        masked_key: platDef.auth_type === 'cookie' ? (cookie ? '****Cookie****' : '') : maskCredential(key),
         has_balance_api: !!platDef.hostname,
         auth_type: platDef.auth_type || 'bearer',
         console_url: platDef.console_url,
         enabled: instData.enabled !== false && hasCredential,
         defaultW: platDef.defaultW || 1,
         defaultH: platDef.defaultH || 1,
-        detected_source: instData.detected_source || '',
+        detected_source: instData.credential_source || instData.detected_source || '',
+        credential_env: instData.credential_env || credentialEnvName(instanceId, credentialFieldForPlatform(platDef)),
       });
     }
     return result;
@@ -683,7 +807,13 @@ function registerIpcHandlers() {
   ipcMain.handle('get-platform-defs', () => {
     const defs = {};
     for (const [id, def] of Object.entries(PLATFORM_DEFS)) {
-      defs[id] = { name: def.name, defaultW: def.defaultW || 1, defaultH: def.defaultH || 1 };
+      defs[id] = {
+        name: def.name,
+        defaultW: def.defaultW || 1,
+        defaultH: def.defaultH || 1,
+        auth_type: def.auth_type || 'bearer',
+        env_keys: def.env_keys || [],
+      };
     }
     return defs;
   });
@@ -706,6 +836,7 @@ function registerIpcHandlers() {
   ipcMain.handle('remove-platform-instance', (_event, instanceId) => {
     const config = loadConfig();
     if (!config.platforms[instanceId]) return { error: 'Instance not found' };
+    removeCredentials(instanceId);
     delete config.platforms[instanceId];
     // 同时从 layout 中移除
     if (config.layout) {
@@ -771,11 +902,26 @@ function registerIpcHandlers() {
     }
 
     if (updates.alias !== undefined) instData.alias = updates.alias;
-    if (updates.key !== undefined) instData.key = updates.key;
-    if (updates.cookie !== undefined) instData.cookie = updates.cookie;
+    if (updates.key !== undefined) {
+      saveCredential(instanceId, 'key', updates.key);
+      delete instData.key;
+      instData.credential_source = CREDENTIAL_SOURCE_LABELS.manual;
+      instData.credential_env = credentialEnvName(instanceId, 'key');
+    }
+    if (updates.cookie !== undefined) {
+      saveCredential(instanceId, 'cookie', updates.cookie);
+      delete instData.cookie;
+      instData.credential_source = CREDENTIAL_SOURCE_LABELS.manual;
+      instData.credential_env = credentialEnvName(instanceId, 'cookie');
+    }
     if (updates.enabled !== undefined) instData.enabled = updates.enabled;
     saveConfig(config);
     return { status: 'ok' };
+  });
+
+  // 从外部工具导入当前实例的 API Key，并统一保存到 App 自己的 .api_panel.env
+  ipcMain.handle('import-platform-credential', (_event, instanceId, source) => {
+    return importCredentialFromSource(instanceId, source);
   });
 
   // ─── 应用信息 ───
@@ -884,7 +1030,7 @@ function createWindow() {
     minHeight: 600,
     title: 'API 聚合面板',
     frame: false,
-    transparent: true,
+    backgroundColor: '#0a0f0a',
     titleBarStyle: 'hidden',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),

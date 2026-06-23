@@ -145,7 +145,7 @@ const WelcomeWizard = {
           <p class="wizard-subtitle">多平台 AI API 用量一目了然</p>
 
           <div v-if="configuredTypes.length > 0" class="wizard-detect">
-            <div class="wizard-detect-title">🔍 自动检测到以下 API Key</div>
+            <div class="wizard-detect-title">已保存到 API Panel 的 API Key</div>
             <div class="wizard-detect-list">
               <div v-for="(instances, source) in detectedBySource" :key="source" class="wizard-detect-group">
                 <div class="wizard-detect-source">来源：{{ source }}</div>
@@ -156,7 +156,7 @@ const WelcomeWizard = {
               </div>
             </div>
             <button class="btn-primary wizard-btn" @click="addAllDetected">
-              🚀 一键添加所有检测到的平台
+              一键添加所有已保存的平台
             </button>
             <button class="btn-secondary wizard-btn" @click="step = 1">
               手动选择要添加的平台 →
@@ -164,8 +164,8 @@ const WelcomeWizard = {
           </div>
 
           <div v-else class="wizard-empty">
-            <p class="wizard-empty-text">未检测到已配置的 API Key</p>
-            <p class="wizard-empty-hint">请先配置至少一个平台的 API Key</p>
+            <p class="wizard-empty-text">还没有保存到 API Panel 的 API Key</p>
+            <p class="wizard-empty-hint">可以手动填写；添加卡片后也能在设置里从 Hermes Agent 或 OpenClaw 导入</p>
             <button class="btn-primary wizard-btn" @click="step = 1">
               开始配置 →
             </button>
@@ -183,7 +183,7 @@ const WelcomeWizard = {
 
           <!-- 已有 Key 的平台类型 -->
           <div v-if="configuredTypes.length > 0" class="wizard-section">
-            <div class="wizard-section-title">✅ 已检测到 Key（点击直接添加）</div>
+            <div class="wizard-section-title">已保存 Key（点击直接添加）</div>
             <div class="wizard-platform-grid">
               <div v-for="p in configuredTypes" :key="p.id"
                    class="wizard-platform-card detected"

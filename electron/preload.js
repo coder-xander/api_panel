@@ -16,6 +16,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 更新平台实例配置（alias / key / enabled）
   updatePlatform: (instanceId, updates) => ipcRenderer.invoke('update-platform', instanceId, updates),
 
+  // 从 Hermes Agent / OpenClaw 导入 API Key，并保存到 App 自己的 .api_panel.env
+  importPlatformCredential: (instanceId, source) => ipcRenderer.invoke('import-platform-credential', instanceId, source),
+
   // 添加新的平台实例
   addPlatformInstance: (type) => ipcRenderer.invoke('add-platform-instance', type),
 
