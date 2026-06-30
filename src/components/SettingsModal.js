@@ -11,23 +11,11 @@ const SettingsModal = {
     return {
       formAlias: '',
       formKey: '',
-      formCookie: '',
       showKey: false,
-      showCookie: false,
-      extracting: false,
       importingSource: '',
-      extractError: '',
       importError: '',
       importMessage: '',
-      step: 'open', // 'open' | 'login' | 'done'
-      defaultBrowser: '浏览器',
     };
-  },
-
-  computed: {
-    isCookieAuth() {
-      return this.platform?.auth_type === 'cookie';
-    },
   },
 
   watch: {
@@ -35,15 +23,10 @@ const SettingsModal = {
       if (plat) {
         this.formAlias = plat.alias !== plat.name ? plat.alias : '';
         this.formKey = '';
-        this.formCookie = '';
         this.showKey = false;
-        this.showCookie = false;
-        this.extractError = '';
         this.importError = '';
         this.importMessage = '';
         this.importingSource = '';
-        this.step = 'open';
-        // Cookie 鉴权平台需要用户手动提取，不做自动提取
       }
     },
   },
@@ -53,26 +36,18 @@ const SettingsModal = {
       this.$emit('close');
     },
 
-    async fetchDefaultBrowser() {
-      try {
-        this.defaultBrowser = await window.electronAPI.getDefaultBrowser();
-      } catch (_) { /* ignore */ }
-    },
-
     async save() {
       const instanceId = this.platform?.id;
       if (!instanceId) return;
       const updates = {};
       if (this.formAlias) updates.alias = this.formAlias;
       if (this.formKey) updates.key = this.formKey;
-      if (this.formCookie) updates.cookie = this.formCookie;
       updates.enabled = true;
 
       try {
         const resp = await window.electronAPI.updatePlatform(instanceId, updates);
         if (resp.status === 'ok') {
-          const hasNewCredential = this.isCookieAuth ? !!this.formCookie : !!this.formKey;
-          this.$emit('saved', { instanceId, hasNewKey: hasNewCredential });
+          this.$emit('saved', { instanceId, hasNewKey: !!this.formKey });
         }
       } catch (e) {
         console.error('Save failed:', e);
@@ -98,33 +73,6 @@ const SettingsModal = {
         this.importError = e.message || '导入失败';
       } finally {
         this.importingSource = '';
-      }
-    },
-
-    async openMimoInBrowser() {
-      // 在系统默认浏览器中打开 MiMo 控制台
-      try {
-        await window.electronAPI.openExternal('https://platform.xiaomimimo.com/console/plan-manage');
-        this.step = 'login'; // 切换到「已登录，提取 Cookie」步骤
-      } catch (_) { /* ignore */ }
-    },
-
-    async extractCookie() {
-      this.extracting = true;
-      this.extractError = '';
-
-      try {
-        const result = await window.electronAPI.mimoExtractCookie();
-        if (result.cookie) {
-          this.formCookie = result.cookie;
-          this.step = 'done';
-        } else {
-          this.extractError = result.error || '提取失败 — 请确认已在默认浏览器中登录 MiMo';
-        }
-      } catch (e) {
-        this.extractError = e.message || '提取失败';
-      } finally {
-        this.extracting = false;
       }
     },
 
@@ -158,67 +106,31 @@ const SettingsModal = {
               <code v-if="platform?.credential_env">{{ platform.credential_env }}</code>
             </div>
 
-            <!-- Cookie 鉴权平台（MiMo） -->
-            <template v-if="isCookieAuth">
-              <label class="field">
-                <span class="field-label">小米账号 Cookie</span>
-                <div class="field-hint" v-if="step === 'open'">
-                  ⚠️ Cookie 过期？先在默认浏览器中登录 MiMo，再回来提取。
-                </div>
-                <div class="field-hint" v-else-if="step === 'login'">
-                  已在浏览器中登录 MiMo？点击下方按钮提取 Cookie。
-                </div>
-                <div class="field-hint" v-else-if="step === 'done'">
-                  ✅ Cookie 提取成功，点击保存即可使用。
-                </div>
-                <div style="margin-bottom:10px;display:flex;gap:8px">
-                  <button type="button" class="btn-primary" @click="openMimoInBrowser" style="flex:1" v-if="step === 'open'">
-                    🌐 在默认浏览器中打开 MiMo
-                  </button>
-                  <button type="button" class="btn-primary" @click="extractCookie" :disabled="extracting" style="flex:1" v-else>
-                    {{ extracting ? '⏳ 提取中...' : (step === 'done' ? '🔄 重新提取' : '🔑 提取 Cookie') }}
-                  </button>
-                </div>
-                <div v-if="extractError" style="color:var(--danger);font-size:0.8rem;margin-bottom:8px">
-                  ❌ {{ extractError }}
-                </div>
-                <div v-if="formCookie" style="color:var(--success);font-size:0.8rem;margin-bottom:8px">
-                  ✅ Cookie 已获取（{{ formCookie.length }} 字符）
-                </div>
-                <div class="key-input-wrap">
-                  <textarea v-model="formCookie" rows="3" placeholder="或手动粘贴 Cookie" style="resize:vertical;font-family:monospace;font-size:12px"></textarea>
-                </div>
-              </label>
-            </template>
+             <div class="import-section">
+               <div class="field-label">导入 API Key</div>
+               <div class="field-hint">
+                 从外部工具读取一次，然后统一保存到 API Panel 自己的 .api_panel.env。
+               </div>
+               <div class="import-actions">
+                 <button type="button" class="btn-secondary" @click="importCredential('hermes')" :disabled="!!importingSource">
+                   {{ importingSource === 'hermes' ? '导入中...' : '从 Hermes Agent 导入' }}
+                 </button>
+                 <button type="button" class="btn-secondary" @click="importCredential('openclaw')" :disabled="!!importingSource">
+                   {{ importingSource === 'openclaw' ? '导入中...' : '从 OpenClaw 导入' }}
+                 </button>
+               </div>
+               <div v-if="importError" class="inline-error">{{ importError }}</div>
+               <div v-if="importMessage" class="inline-success">{{ importMessage }}</div>
+             </div>
 
-            <!-- 标准 Bearer token 平台 -->
-            <template v-else>
-              <div class="import-section">
-                <div class="field-label">导入 API Key</div>
-                <div class="field-hint">
-                  从外部工具读取一次，然后统一保存到 API Panel 自己的 .api_panel.env。
-                </div>
-                <div class="import-actions">
-                  <button type="button" class="btn-secondary" @click="importCredential('hermes')" :disabled="!!importingSource">
-                    {{ importingSource === 'hermes' ? '导入中...' : '从 Hermes Agent 导入' }}
-                  </button>
-                  <button type="button" class="btn-secondary" @click="importCredential('openclaw')" :disabled="!!importingSource">
-                    {{ importingSource === 'openclaw' ? '导入中...' : '从 OpenClaw 导入' }}
-                  </button>
-                </div>
-                <div v-if="importError" class="inline-error">{{ importError }}</div>
-                <div v-if="importMessage" class="inline-success">{{ importMessage }}</div>
-              </div>
-
-              <label class="field">
-                <span class="field-label">手动填写 API Key</span>
-                <div class="key-input-wrap">
-                  <input :type="showKey ? 'text' : 'password'" v-model="formKey" placeholder="输入 API Key" autocomplete="off">
-                  <button type="button" class="toggle-key" @click="showKey = !showKey">{{ showKey ? '🙈' : '👁' }}</button>
-                </div>
-                <div class="field-hint">手动保存后也会写入 API Panel 自己的 .api_panel.env。</div>
-              </label>
-            </template>
+             <label class="field">
+               <span class="field-label">手动填写 API Key</span>
+               <div class="key-input-wrap">
+                 <input :type="showKey ? 'text' : 'password'" v-model="formKey" placeholder="输入 API Key" autocomplete="off">
+                 <button type="button" class="toggle-key" @click="showKey = !showKey">{{ showKey ? '🙈' : '👁' }}</button>
+               </div>
+               <div class="field-hint">手动保存后也会写入 API Panel 自己的 .api_panel.env。</div>
+             </label>
 
             <div class="form-actions">
               <button type="submit" class="btn-primary">💾 保存</button>

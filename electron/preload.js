@@ -43,12 +43,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 在系统默认浏览器打开链接
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
 
-  // MiMo Cookie：从默认浏览器自动提取
-  mimoExtractCookie: () => ipcRenderer.invoke('mimo-extract-cookie'),
-
-  // 获取默认浏览器名称
-  getDefaultBrowser: () => ipcRenderer.invoke('get-default-browser'),
-
   // 布局管理
   getLayout: () => ipcRenderer.invoke('get-layout'),
   saveLayout: (layout) => ipcRenderer.invoke('save-layout', layout),

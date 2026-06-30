@@ -10,8 +10,7 @@
     "build": "electron-builder",
     "build:linux": "electron-builder --linux",
     "build:win": "electron-builder --win",
-    "build:all": "electron-builder --linux --win",
-    "reinstall": "rm -f dist/*.deb && npm run build:linux && pkill -f 'api-panel' 2>/dev/null; sleep 1; sudo dpkg -i dist/api-panel_*.deb"
+    "build:all": "electron-builder --linux --win"
   },
   "build": {
     "appId": "com.hermes.api-panel",
@@ -52,11 +51,7 @@
     },
     "files": [
       "electron/**",
-      "src/**",
-      "scripts/**"
-    ],
-    "asarUnpack": [
-      "scripts/**"
+      "src/**"
     ],
     "extraResources": []
   },

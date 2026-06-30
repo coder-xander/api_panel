@@ -691,25 +691,6 @@ body {
   color: var(--text-muted);
 }
 
-/* MiMo 紧凑标签 */
-.mimo-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 12px;
-}
-.mimo-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 3px 10px;
-  border-radius: 8px;
-  background: rgba(163, 255, 71, 0.06);
-  border: 1px solid rgba(163, 255, 71, 0.12);
-  font-size: 0.7rem;
-  color: var(--text-secondary);
-}
-
 /* Sheet 底部按钮 */
 .sheet-actions {
   display: flex;

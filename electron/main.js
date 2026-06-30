@@ -101,7 +101,7 @@ function credentialEnvName(instanceId, field) {
 }
 
 function credentialFieldForPlatform(platDef) {
-  return platDef?.auth_type === 'cookie' ? 'cookie' : 'key';
+  return 'key';
 }
 
 function maskCredential(value) {
@@ -129,14 +129,12 @@ function migrateSecretsToAppEnv(config) {
   const updates = {};
   const appEnv = parseEnvFile(APP_ENV_FILE);
   for (const [instanceId, instData] of Object.entries(config.platforms || {})) {
-    for (const field of ['key', 'cookie']) {
-      if (!instData[field]) continue;
-      const envName = credentialEnvName(instanceId, field);
-      if (!appEnv[envName]) updates[envName] = instData[field];
-      delete instData[field];
-      instData.credential_source = instData.credential_source || CREDENTIAL_SOURCE_LABELS.app;
-      changed = true;
-    }
+    if (!instData.key) continue;
+    const envName = credentialEnvName(instanceId, 'key');
+    if (!appEnv[envName]) updates[envName] = instData.key;
+    delete instData.key;
+    instData.credential_source = instData.credential_source || CREDENTIAL_SOURCE_LABELS.app;
+    changed = true;
   }
   if (Object.keys(updates).length > 0) updateAppEnv(updates);
   return changed;
@@ -149,14 +147,12 @@ function saveCredential(instanceId, field, value) {
 function removeCredentials(instanceId) {
   updateAppEnv({
     [credentialEnvName(instanceId, 'key')]: '',
-    [credentialEnvName(instanceId, 'cookie')]: '',
   });
 }
 
 function stripRuntimeCredentials(config) {
   for (const instData of Object.values(config.platforms || {})) {
     delete instData.key;
-    delete instData.cookie;
   }
   return config;
 }
@@ -185,17 +181,12 @@ const PLATFORM_DEFS = {
   },
   xiaomi: {
     name: '小米 MiMo',
-    hostname: 'platform.xiaomimimo.com',
-    path: '/api/v1/tokenPlan/usage',
-    method: 'GET',
-    parser: 'xiaomi',
-    auth_type: 'cookie',
-    extra_paths: {
-      detail: '/api/v1/tokenPlan/detail',
-      profile: '/api/v1/userProfile',
-    },
+    hostname: '',
+    path: '',
+    method: '',
+    parser: '',
     console_url: 'https://platform.xiaomimimo.com/console/plan-manage',
-    defaultW: 2, defaultH: 1,
+    defaultW: 1, defaultH: 1,
     env_keys: ['XIAOMI_API_KEY'],
   },
   lumai: {
@@ -402,51 +393,6 @@ function parseLumai(data) {
   return result;
 }
 
-function parseXiaomi(data, extraData) {
-  const usage = data?.data || {};
-  const detail = extraData?.detail?.data || {};
-  const result = {
-    available: true,
-    balances: [],
-  };
-
-  const usageGroup = usage.usage || {};
-  const items = usageGroup.items || [];
-  if (items.length > 0) {
-    const main = items[0];
-    result.balances.push({
-      currency: 'CNY',
-      total: main.limit || 0,
-      limit: main.limit || 0,
-      used: main.used || 0,
-      remaining: (main.limit || 0) - (main.used || 0),
-      percent: main.percent || 0,
-    });
-  }
-
-  if (detail.planName) {
-    result.plan = {
-      name: detail.planName,
-      code: detail.planCode,
-      expired: detail.expired,
-      autoRenew: detail.enableAutoRenew,
-      periodEnd: detail.currentPeriodEnd,
-    };
-  }
-
-  const monthUsage = usage.monthUsage || {};
-  const monthItems = monthUsage.items || [];
-  if (monthItems.length > 0) {
-    result.monthUsage = {
-      percent: monthUsage.percent || 0,
-      used: monthItems[0].used || 0,
-      limit: monthItems[0].limit || 0,
-    };
-  }
-
-  return result;
-}
-
 function parseOpenRouter(data) {
   const d = data.data || data;
   const usage = d.usage || 0;
@@ -484,7 +430,7 @@ function parseOpenai(data) {
   return { available: true, balances: [{ currency: 'USD', total: 0 }] };
 }
 
-const PARSERS = { deepseek: parseDeepseek, kimi: parseKimi, lumai: parseLumai, xiaomi: parseXiaomi, openrouter: parseOpenRouter, siliconflow: parseSiliconflow, openai: parseOpenai };
+const PARSERS = { deepseek: parseDeepseek, kimi: parseKimi, lumai: parseLumai, openrouter: parseOpenRouter, siliconflow: parseSiliconflow, openai: parseOpenai };
 
 // ─── HTTP 查询（Node.js 内置 https） ───
 function httpsGet(hostname, path, apiKey) {
@@ -516,39 +462,9 @@ function httpsGet(hostname, path, apiKey) {
   });
 }
 
-// ─── Cookie 鉴权的 HTTP 请求（用于 MiMo 等需要登录态的平台） ───
-function httpsGetWithCookie(hostname, path, cookie) {
-  return new Promise((resolve, reject) => {
-    const req = https.request({
-      hostname,
-      path,
-      method: 'GET',
-      headers: {
-        'Cookie': cookie,
-        'Content-Type': 'application/json',
-        'Accept': '*/*',
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-      },
-      timeout: 15000,
-    }, (res) => {
-      let body = '';
-      res.on('data', (chunk) => { body += chunk; });
-      res.on('end', () => {
-        if (res.statusCode >= 400) {
-          reject({ code: res.statusCode, message: body.slice(0, 500) });
-        } else {
-          try { resolve(JSON.parse(body)); }
-          catch (e) { reject({ message: 'Invalid JSON response' }); }
-        }
-      });
-    });
-    req.on('error', (e) => reject({ message: e.message }));
-    req.on('timeout', () => { req.destroy(); reject({ message: 'Request timeout' }); });
-    req.end();
-  });
-}
 
-async function queryBalance(platformId, apiKey, cookie) {
+
+async function queryBalance(platformId, apiKey) {
   const plat = PLATFORM_DEFS[platformId];
   if (!plat.hostname || !plat.parser) {
     return {
@@ -556,34 +472,6 @@ async function queryBalance(platformId, apiKey, cookie) {
       message: `${plat.name} 不支持 REST API 查询余额，请访问网页控制台`,
       console_url: plat.console_url,
     };
-  }
-
-  // Cookie 鉴权平台（如 MiMo）需要 cookie，不需要 API key
-  if (plat.auth_type === 'cookie') {
-    if (!cookie) {
-      return {
-        status: 'no_api',
-        message: `${plat.name} 需要配置小米账号 Cookie 才能查询用量`,
-        console_url: plat.console_url,
-      };
-    }
-    try {
-      const raw = await httpsGetWithCookie(plat.hostname, plat.path, cookie);
-      let extraData = {};
-      if (plat.extra_paths?.detail) {
-        try {
-          extraData.detail = await httpsGetWithCookie(plat.hostname, plat.extra_paths.detail, cookie);
-        } catch (_) { /* 详情查询失败不影响主流程 */ }
-      }
-      const parser = PARSERS[plat.parser];
-      const data = parser ? parser(raw, extraData) : raw;
-      return { status: 'ok', data, raw };
-    } catch (e) {
-      if (e.code === 401) {
-        return { status: 'error', message: 'Cookie 已过期 — 请先在浏览器中重新登录 platform.xiaomimimo.com，然后回到面板重新提取 Cookie' };
-      }
-      return { status: 'error', code: e.code, message: e.message };
-    }
   }
 
   // 标准 Bearer token 鉴权
@@ -618,9 +506,6 @@ function importCredentialFromSource(instanceId, source) {
 
   const platDef = PLATFORM_DEFS[instData.type];
   if (!platDef) return { status: 'error', message: '未知平台类型' };
-  if (credentialFieldForPlatform(platDef) === 'cookie') {
-    return { status: 'error', message: `${platDef.name} 使用 Cookie 鉴权，请手动填写或使用专用提取按钮` };
-  }
 
   let sourceVars = {};
   if (source === 'hermes') {
@@ -643,7 +528,6 @@ function importCredentialFromSource(instanceId, source) {
 
   saveCredential(instanceId, 'key', sourceVars[matchedKey]);
   delete instData.key;
-  delete instData.cookie;
   instData.enabled = true;
   instData.credential_source = CREDENTIAL_SOURCE_LABELS[source];
   instData.credential_env = credentialEnvName(instanceId, 'key');
@@ -749,24 +633,22 @@ function registerIpcHandlers() {
       if (!platDef) continue;
 
       const key = instData.key || '';
-      const cookie = instData.cookie || '';
-      const hasCredential = platDef.auth_type === 'cookie' ? !!cookie : !!key;
 
       result.push({
         id: instanceId,       // 实例唯一 ID，如 "deepseek#1"
         type,                 // 平台类型，如 "deepseek"
         name: platDef.name,   // 平台显示名
         alias: instData.alias || platDef.name,
-        has_key: hasCredential,
-        masked_key: platDef.auth_type === 'cookie' ? (cookie ? '****Cookie****' : '') : maskCredential(key),
+        has_key: !!key,
+        masked_key: maskCredential(key),
         has_balance_api: !!platDef.hostname,
         auth_type: platDef.auth_type || 'bearer',
         console_url: platDef.console_url,
-        enabled: instData.enabled !== false && hasCredential,
+        enabled: instData.enabled !== false && !!key,
         defaultW: platDef.defaultW || 1,
         defaultH: platDef.defaultH || 1,
         detected_source: instData.credential_source || instData.detected_source || '',
-        credential_env: instData.credential_env || credentialEnvName(instanceId, credentialFieldForPlatform(platDef)),
+        credential_env: instData.credential_env || credentialEnvName(instanceId, 'key'),
       });
     }
     return result;
@@ -855,11 +737,10 @@ function registerIpcHandlers() {
     if (!PLATFORM_DEFS[type]) return { error: 'Unknown platform type' };
 
     const key = instData.key;
-    const cookie = instData.cookie;
-    if (!key && !cookie) {
-      return { error: 'No API key or cookie configured' };
+    if (!key) {
+      return { error: 'No API key configured' };
     }
-    const result = await queryBalance(type, key, cookie);
+    const result = await queryBalance(type, key);
     return {
       alias: instData.alias || PLATFORM_DEFS[type].name,
       result,
@@ -875,11 +756,10 @@ function registerIpcHandlers() {
       const platDef = PLATFORM_DEFS[type];
       if (!platDef) return;
       const key = instData.key;
-      const cookie = instData.cookie;
-      if ((!key && !cookie) || instData.enabled === false) return;
+      if (!key || instData.enabled === false) return;
       results[instanceId] = {
         alias: instData.alias || platDef.name,
-        result: await queryBalance(type, key, cookie),
+        result: await queryBalance(type, key),
       };
     });
     await Promise.all(promises);
@@ -908,12 +788,6 @@ function registerIpcHandlers() {
       instData.credential_source = CREDENTIAL_SOURCE_LABELS.manual;
       instData.credential_env = credentialEnvName(instanceId, 'key');
     }
-    if (updates.cookie !== undefined) {
-      saveCredential(instanceId, 'cookie', updates.cookie);
-      delete instData.cookie;
-      instData.credential_source = CREDENTIAL_SOURCE_LABELS.manual;
-      instData.credential_env = credentialEnvName(instanceId, 'cookie');
-    }
     if (updates.enabled !== undefined) instData.enabled = updates.enabled;
     saveConfig(config);
     return { status: 'ok' };
@@ -932,51 +806,6 @@ function registerIpcHandlers() {
     if (!url || typeof url !== 'string') return;
     if (url.startsWith('http://') || url.startsWith('https://')) {
       shell.openExternal(url);
-    }
-  });
-
-  // ─── MiMo Cookie：通过 libsecret 直接解密 Brave Cookie 数据库提取 ───
-  // 不再使用 CDP（Chrome DevTools Protocol），改用 pycookiecheat 从 SQLite 数据库
-  // 直接解密 AES-128-GCM 加密的 cookie 值，不需要启动浏览器或暴露 CDP 端口。
-  ipcMain.handle('mimo-extract-cookie', () => {
-    const { execFile } = require('child_process');
-    const scriptPath = path.join(
-      ROOT.replace('app.asar', 'app.asar.unpacked'),
-      'scripts',
-      'extract_mimo_cookies.py',
-    );
-
-    return new Promise((resolve) => {
-      execFile('python3', [scriptPath], { timeout: 15000 }, (err, stdout, stderr) => {
-        try {
-          const result = JSON.parse(stdout.trim());
-          resolve(result);
-        } catch (_) {
-          resolve({
-            cookie: null,
-            error: stderr?.trim() || err?.message || 'Cookie 提取脚本执行失败',
-          });
-        }
-      });
-    });
-  });
-
-  // ─── 获取默认浏览器名称 ───
-  ipcMain.handle('get-default-browser', () => {
-    const { execFileSync } = require('child_process');
-    try {
-      const desktop = execFileSync('xdg-settings', ['get', 'default-web-browser'], { timeout: 3000, encoding: 'utf-8' }).trim();
-      const map = {
-        'brave-browser.desktop': 'Brave', 'brave-browser-beta.desktop': 'Brave Beta',
-        'google-chrome.desktop': 'Chrome', 'google-chrome-stable.desktop': 'Chrome',
-        'chromium-browser.desktop': 'Chromium', 'chromium.desktop': 'Chromium',
-        'microsoft-edge.desktop': 'Edge', 'microsoft-edge-stable.desktop': 'Edge',
-        'vivaldi-stable.desktop': 'Vivaldi',
-        'firefox.desktop': 'Firefox', 'firefox-esr.desktop': 'Firefox ESR',
-      };
-      return map[desktop] || desktop.replace('.desktop', '');
-    } catch (_) {
-      return '浏览器';
     }
   });
 

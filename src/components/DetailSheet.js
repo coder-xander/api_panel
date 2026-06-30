@@ -24,11 +24,6 @@ const DetailSheet = {
       const b = this.balance;
       if (!b.balances || !b.balances.length) return null;
       const bal = b.balances[0];
-      // MiMo Token Plan
-      if (bal.used !== undefined && bal.limit !== undefined) {
-        const pct = bal.percent ? (bal.percent * 100).toFixed(1) : '0';
-        return { value: `${this.fmtNum(bal.used)} / ${this.fmtNum(bal.limit)}`, label: `Token Plan 用量 (${pct}%)` };
-      }
       const symbol = bal.currency === 'USD' ? '$' : '¥';
       return { value: `${symbol}${bal.total.toFixed(2)}`, label: `总余额 (${bal.currency || 'CNY'})` };
     },
@@ -38,14 +33,6 @@ const DetailSheet = {
       const b = this.balance;
       if (!b.balances || !b.balances.length) return [];
       const bal = b.balances[0];
-      // MiMo Token Plan
-      if (bal.used !== undefined) {
-        return [
-          { label: '已用 Token', value: this.fmtNum(bal.used) },
-          { label: '总量 Token', value: this.fmtNum(bal.limit) },
-          { label: '剩余 Token', value: this.fmtNum(bal.remaining) },
-        ];
-      }
       const symbol = bal.currency === 'USD' ? '$' : '¥';
       const items = [];
       if (bal.granted !== undefined) items.push({ label: '赠送余额', value: `${symbol}${bal.granted.toFixed(2)}` });
@@ -57,10 +44,6 @@ const DetailSheet = {
 
     showLumaiStats() {
       return this.balance?.live_today || (this.balance?.models && this.balance.models.length) || this.balance?.lifetime;
-    },
-
-    showMiMoTags() {
-      return this.balance?.plan || this.balance?.monthUsage;
     },
 
     showTodayUsage() {
@@ -209,13 +192,7 @@ const DetailSheet = {
               </div>
             </div>
 
-            <!-- MiMo Token Plan 信息 -->
-            <div v-if="showMiMoTags" class="mimo-tags">
-              <span v-if="balance?.plan" class="mimo-tag">📦 {{ balance.plan.name }}</span>
-              <span v-if="balance?.plan" class="mimo-tag">{{ balance.plan.autoRenew ? '🔄 自动续费' : '⏸ 手动续费' }}</span>
-              <span v-if="balance?.plan?.periodEnd" class="mimo-tag">⏰ {{ new Date(balance.plan.periodEnd).toLocaleDateString('zh-CN') }}</span>
-              <span v-if="balance?.monthUsage" class="mimo-tag">📅 月 {{ fmtNum(balance.monthUsage.used) }} / {{ fmtNum(balance.monthUsage.limit) }} ({{ (balance.monthUsage.percent * 100).toFixed(1) }}%)</span>
-            </div>
+
           </template>
 
           <!-- 待刷新状态 -->

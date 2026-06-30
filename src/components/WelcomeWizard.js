@@ -12,11 +12,7 @@ const WelcomeWizard = {
       step: 0,  // 0=欢迎, 1=选择平台, 2=配置Key
       selectedPlatform: null,  // 选中的平台类型对象
       formKey: '',
-      formCookie: '',
       showKey: false,
-      extracting: false,
-      extractError: '',
-      defaultBrowser: '浏览器',
     };
   },
 
@@ -53,36 +49,23 @@ const WelcomeWizard = {
       return this.availablePlatforms.filter(p => !configured.has(p.id));
     },
 
-    isCookieAuth() {
-      return this.selectedPlatform?.auth_type === 'cookie';
-    },
   },
 
   mounted() {
-    this.fetchDefaultBrowser();
     if (this.configuredTypes.length > 0) {
       this.step = 1;
     }
   },
 
   methods: {
-    async fetchDefaultBrowser() {
-      try {
-        this.defaultBrowser = await window.electronAPI.getDefaultBrowser();
-      } catch (_) {}
-    },
-
     selectPlatform(plat) {
       this.selectedPlatform = plat;
       this.formKey = '';
-      this.formCookie = '';
-      this.extractError = '';
       if (plat.has_key) {
         // 已有 key，直接添加到面板（使用实例 ID）
         this.$emit('add-card', plat.id);
       } else {
         this.step = 2;
-        // Cookie 平台需要用户手动点击提取，不做自动提取
       }
     },
 
@@ -91,7 +74,6 @@ const WelcomeWizard = {
       if (!type) return;
       const updates = {};
       if (this.formKey) updates.key = this.formKey;
-      if (this.formCookie) updates.cookie = this.formCookie;
       updates.enabled = true;
 
       // 创建新实例
@@ -103,24 +85,6 @@ const WelcomeWizard = {
 
       // 通知父组件添加到面板（传实例 ID，避免重复创建）
       this.$emit('add-card', resp.instanceId);
-    },
-
-    async extractCookie() {
-      this.extracting = true;
-      this.extractError = '';
-      try {
-        const result = await window.electronAPI.mimoExtractCookie();
-        if (result.cookie) {
-          this.formCookie = result.cookie;
-          if (result.browser) this.defaultBrowser = result.browser;
-        } else {
-          this.extractError = result.error || '提取失败';
-        }
-      } catch (e) {
-        this.extractError = e.message || '提取失败';
-      } finally {
-        this.extracting = false;
-      }
     },
 
     addAllDetected() {
@@ -203,7 +167,7 @@ const WelcomeWizard = {
                    class="wizard-platform-card"
                    @click="selectPlatform(p)">
                 <div class="wizard-platform-name">{{ p.name }}</div>
-                <div class="wizard-platform-hint">{{ p.auth_type === 'cookie' ? '需要 Cookie' : '需要 API Key' }}</div>
+                <div class="wizard-platform-hint">需要 API Key</div>
               </div>
             </div>
           </div>
@@ -218,41 +182,16 @@ const WelcomeWizard = {
             <h2 class="wizard-step-title">配置 {{ selectedPlatform.name }}</h2>
           </div>
 
-          <!-- Cookie 鉴权 -->
-          <template v-if="isCookieAuth">
-            <label class="field">
-              <span class="field-label">小米账号 Cookie</span>
-              <div class="field-hint">
-                从 {{ defaultBrowser }} 自动提取（需先在 {{ defaultBrowser }} 中登录 platform.xiaomimimo.com）
-              </div>
-              <div style="margin-bottom:10px">
-                <button type="button" class="btn-primary" @click="extractCookie" :disabled="extracting" style="width:100%">
-                  {{ extracting ? '⏳ 正在从 ' + defaultBrowser + ' 提取...' : '🔑 从 ' + defaultBrowser + ' 一键提取 Cookie' }}
-                </button>
-              </div>
-              <div v-if="extractError" style="color:var(--danger);font-size:0.8rem;margin-bottom:8px">
-                ❌ {{ extractError }}
-              </div>
-              <div v-if="formCookie" style="color:var(--success);font-size:0.8rem;margin-bottom:8px">
-                ✅ Cookie 已获取（{{ formCookie.length }} 字符）
-              </div>
-              <textarea v-model="formCookie" rows="3" placeholder="或手动粘贴 Cookie" style="resize:vertical;font-family:monospace;font-size:12px"></textarea>
-            </label>
-          </template>
-
-          <!-- Bearer token -->
-          <template v-else>
-            <label class="field">
-              <span class="field-label">API Key</span>
-              <div class="key-input-wrap">
-                <input :type="showKey ? 'text' : 'password'" v-model="formKey" placeholder="输入 API Key" autocomplete="off">
-                <button type="button" class="toggle-key" @click="showKey = !showKey">{{ showKey ? '🙈' : '👁' }}</button>
-              </div>
-            </label>
-          </template>
+          <label class="field">
+            <span class="field-label">API Key</span>
+            <div class="key-input-wrap">
+              <input :type="showKey ? 'text' : 'password'" v-model="formKey" placeholder="输入 API Key" autocomplete="off">
+              <button type="button" class="toggle-key" @click="showKey = !showKey">{{ showKey ? '🙈' : '👁' }}</button>
+            </div>
+          </label>
 
           <div class="form-actions">
-            <button class="btn-primary" @click="saveAndAdd" :disabled="isCookieAuth ? !formCookie : !formKey">
+            <button class="btn-primary" @click="saveAndAdd" :disabled="!formKey">
               💾 保存并添加到面板
             </button>
             <button class="btn-secondary" @click="step = 1">取消</button>
