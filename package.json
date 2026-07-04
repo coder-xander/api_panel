@@ -36,10 +36,7 @@
       ]
     },
     "win": {
-      "target": [
-        "nsis",
-        "zip"
-      ],
+      "target": "nsis",
       "icon": "build/icons/icon.ico",
       "signAndEditExecutable": false
     },
