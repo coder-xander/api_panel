@@ -53,4 +53,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // 检查是否首次启动
   isFirstLaunch: () => ipcRenderer.invoke('is-first-launch'),
+
+  // 语言设置
+  getLanguage: () => ipcRenderer.invoke('get-language'),
+  saveLanguage: (locale) => ipcRenderer.invoke('save-language', locale),
 });

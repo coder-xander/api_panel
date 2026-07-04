@@ -1,7 +1,7 @@
 {
   "name": "api-panel",
   "version": "0.3.3",
-  "description": "AI API 聚合面板 — 多平台余额/用量查询 (Electron)",
+  "description": "AI API Panel — Multi-platform balance & usage tracker (Electron)",
   "author": "Hermes <hermes@localhost>",
   "homepage": "https://github.com/hermes/api-panel",
   "main": "electron/main.js",
@@ -15,7 +15,7 @@
   },
   "build": {
     "appId": "com.hermes.api-panel",
-    "productName": "API 聚合面板",
+    "productName": "API Panel",
     "copyright": "Copyright © 2026 Hermes",
     "linux": {
       "target": [

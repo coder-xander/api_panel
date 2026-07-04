@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>API 聚合面板 — 余额 &amp; 用量</title>
+<title>API Panel — Balance &amp; Usage</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpolygon points='15,3 21,14 14,14 22,29 14,16 20,16' fill='%23a3ff47'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,6 +17,16 @@
   <div id="app"></div>
 </div>
 
+<!-- i18n -->
+<script src="i18n.js"></script>
+<script>
+  // Load saved locale before app starts
+  if (window.electronAPI?.getLanguage) {
+    window.electronAPI.getLanguage().then(function (locale) {
+      if (locale) I18N.setLocale(locale);
+    });
+  }
+</script>
 <!-- 图标映射 -->
 <script src="components/IconMap.js"></script>
 <!-- Vue 组件 -->

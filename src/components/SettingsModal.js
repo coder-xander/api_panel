@@ -1,9 +1,10 @@
-// ⚡ SettingsModal — 平台设置弹窗组件（实例版）
-// 支持编辑实例配置、删除实例
+// ⚡ SettingsModal — Platform settings modal component (instance-based)
+// Supports editing instance config, deleting instance
+
 const SettingsModal = {
   props: {
     visible: Boolean,
-    platform: Object,  // 平台实例对象
+    platform: Object,
   },
   emits: ['close', 'saved', 'delete'],
 
@@ -15,6 +16,7 @@ const SettingsModal = {
       importingSource: '',
       importError: '',
       importMessage: '',
+      i18nKey: 0,
     };
   },
 
@@ -64,28 +66,31 @@ const SettingsModal = {
       try {
         const resp = await window.electronAPI.importPlatformCredential(instanceId, source);
         if (resp.status === 'ok') {
-          this.importMessage = `已从 ${resp.source} 导入 ${resp.env_key}，并保存到 API Panel 自己的 .api_panel.env`;
+          this.importMessage = I18N.t('settings.importSuccess', { envKey: resp.env_key, source: resp.source });
           this.$emit('saved', { instanceId, hasNewKey: true });
         } else {
-          this.importError = resp.message || '导入失败';
+          this.importError = resp.message || I18N.t('settings.importFailed');
         }
       } catch (e) {
-        this.importError = e.message || '导入失败';
+        this.importError = e.message || I18N.t('settings.importFailed');
       } finally {
         this.importingSource = '';
       }
     },
 
     deleteInstance() {
-      // 关闭设置弹窗，通知父组件显示确认删除弹窗
       this.$emit('delete', this.platform?.id);
+    },
+
+    setLocale(locale) {
+      I18N.setLocale(locale);
+      window.electronAPI.saveLanguage?.(locale);
     },
   },
 
   template: `
     <div v-if="visible" class="modal-overlay" @click.self="close">
       <div class="modal settings-modal">
-        <!-- 头部 -->
         <div class="settings-header">
           <div class="settings-header-content">
             <h2 class="modal-title">{{ platform?.name }}</h2>
@@ -97,26 +102,26 @@ const SettingsModal = {
         <div class="modal-body">
           <form @submit.prevent="save">
             <label class="field">
-              <span class="field-label">别名</span>
-              <input type="text" v-model="formAlias" :placeholder="'给这个实例起个名字（默认: ' + (platform?.name || '') + ')'">
+              <span class="field-label">${I18N.t('settings.alias')}</span>
+              <input type="text" v-model="formAlias" :placeholder="I18N.t('settings.aliasPlaceholder', { name: platform?.name || '' })">
             </label>
 
             <div v-if="platform?.has_key" class="credential-status">
-              <span>当前凭据来源：{{ platform?.detected_source || 'API Panel (.api_panel.env)' }}</span>
+              <span>${I18N.t('settings.currentSource')}{{ platform?.detected_source || 'API Panel (.api_panel.env)' }}</span>
               <code v-if="platform?.credential_env">{{ platform.credential_env }}</code>
             </div>
 
              <div class="import-section">
-               <div class="field-label">导入 API Key</div>
+               <div class="field-label">${I18N.t('settings.importKey')}</div>
                <div class="field-hint">
-                 从外部工具读取一次，然后统一保存到 API Panel 自己的 .api_panel.env。
+                 ${I18N.t('settings.importHint')}
                </div>
                <div class="import-actions">
                  <button type="button" class="btn-secondary" @click="importCredential('hermes')" :disabled="!!importingSource">
-                   {{ importingSource === 'hermes' ? '导入中...' : '从 Hermes Agent 导入' }}
+                   {{ importingSource === 'hermes' ? I18N.t('settings.importing') : I18N.t('settings.fromHermes') }}
                  </button>
                  <button type="button" class="btn-secondary" @click="importCredential('openclaw')" :disabled="!!importingSource">
-                   {{ importingSource === 'openclaw' ? '导入中...' : '从 OpenClaw 导入' }}
+                   {{ importingSource === 'openclaw' ? I18N.t('settings.importing') : I18N.t('settings.fromOpenClaw') }}
                  </button>
                </div>
                <div v-if="importError" class="inline-error">{{ importError }}</div>
@@ -124,24 +129,35 @@ const SettingsModal = {
              </div>
 
              <label class="field">
-               <span class="field-label">手动填写 API Key</span>
+               <span class="field-label">${I18N.t('settings.manualKey')}</span>
                <div class="key-input-wrap">
-                 <input :type="showKey ? 'text' : 'password'" v-model="formKey" placeholder="输入 API Key" autocomplete="off">
+                 <input :type="showKey ? 'text' : 'password'" v-model="formKey" :placeholder="I18N.t('settings.manualKeyPlaceholder')" autocomplete="off">
                  <button type="button" class="toggle-key" @click="showKey = !showKey">{{ showKey ? '🙈' : '👁' }}</button>
                </div>
-               <div class="field-hint">手动保存后也会写入 API Panel 自己的 .api_panel.env。</div>
+               <div class="field-hint">${I18N.t('settings.manualKeyHint')}</div>
              </label>
 
             <div class="form-actions">
-              <button type="submit" class="btn-primary">💾 保存</button>
-              <button type="button" class="btn-secondary" @click="close">取消</button>
+              <button type="submit" class="btn-primary">${I18N.t('settings.save')}</button>
+              <button type="button" class="btn-secondary" @click="close">${I18N.t('settings.cancel')}</button>
             </div>
           </form>
 
-          <!-- 删除实例按钮 -->
+          <div class="settings-language-section">
+            <div class="field-label">${I18N.t('settings.language')}</div>
+            <div class="language-selector">
+              <button type="button" class="lang-btn" :class="{ active: I18N.getLocale() === 'en' }" @click="setLocale('en')">
+                English
+              </button>
+              <button type="button" class="lang-btn" :class="{ active: I18N.getLocale() === 'zh-CN' }" @click="setLocale('zh-CN')">
+                中文
+              </button>
+            </div>
+          </div>
+
           <div class="settings-danger-zone">
             <button class="btn-danger" @click="deleteInstance">
-              🗑 移除此实例
+              ${I18N.t('settings.removeInstance')}
             </button>
           </div>
         </div>

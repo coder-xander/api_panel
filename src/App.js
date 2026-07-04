@@ -1,5 +1,5 @@
-// ⚡ API 聚合面板 — Vue 3 主应用（手机桌面风格 + 拖拽排序）
-// 支持同平台多实例（不同 API Key）
+// ⚡ API Panel — Vue 3 main app (mobile desktop style + drag & drop)
+// Supports multiple instances per platform (different API Keys)
 
 const { createApp } = Vue;
 
@@ -13,41 +13,36 @@ createApp({
       balances: {},
       statuses: {},
       todayUsages: {},
-      lastUpdated: {},      // { [instanceId]: timestamp } 每个实例最后更新时间
-      now: Date.now(),      // 当前时间，定时刷新驱动相对时间计算
+      lastUpdated: {},
+      now: Date.now(),
       refreshingAll: false,
       showAddModal: false,
       showModal: false,
       editingPlatform: null,
       autoRefreshTimer: null,
-      nowTickTimer: null,   // 定时刷新 now 的计时器
+      nowTickTimer: null,
       windowMaximized: false,
       appVersion: '0.0.0',
       platformDefs: {},
       showWizard: false,
-      detailPlatformId: null,  // 实例 ID
-      // 拖拽状态
-      draggingId: null,    // 正在拖拽的实例 ID
-      dragOverId: null,    // 拖拽悬停的目标实例 ID
-      // 删除确认
+      detailPlatformId: null,
+      draggingId: null,
+      dragOverId: null,
       showConfirmDelete: false,
-      confirmDeleteTarget: null,  // { id, name }
-      // 添加回滚：如果用户取消 SettingsModal 未保存，回滚刚添加的实例
+      confirmDeleteTarget: null,
       pendingAddInstanceId: null,
+      i18nKey: 0,
     };
   },
 
   computed: {
-    // 按 layout 顺序排列的平台实例
     layoutPlatforms() {
       return this.layout
         .map(item => this.platforms.find(p => p.id === item.id))
         .filter(Boolean);
     },
 
-    // 所有平台类型（去重，用于添加弹窗，始终可添加多实例）
     availablePlatforms() {
-      // 构建去重的平台类型列表
       const seen = new Set();
       const result = [];
       for (const p of this.platforms) {
@@ -56,7 +51,6 @@ createApp({
           result.push({ ...p, id: p.type, name: p.name });
         }
       }
-      // 补充 config 中不存在的平台类型
       const defs = Object.keys(this.platformDefs).length > 0
         ? this.platformDefs
         : Object.fromEntries(Object.keys(PLATFORM_ICONS).map(type => [type, {}]));
@@ -82,7 +76,16 @@ createApp({
     },
 
     currentTime() {
-      return new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+      const locale = I18N.getLocale() === 'zh-CN' ? 'zh-CN' : 'en-US';
+      return new Date().toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+    },
+
+    confirmDeleteMsg() {
+      const name = this.confirmDeleteTarget?.name || '';
+      if (I18N.getLocale() === 'zh-CN') {
+        return `确认从面板移除「<strong>${name}</strong>」？`;
+      }
+      return `Remove "<strong>${name}</strong>" from panel?`;
     },
   },
 
@@ -103,12 +106,13 @@ createApp({
     }
 
     this.autoRefreshTimer = setInterval(() => this.refreshAll(), 30 * 60 * 1000);
-    // 每 5 秒刷新一次 now，驱动相对时间显示
     this.nowTickTimer = setInterval(() => { this.now = Date.now(); }, 5000);
 
     window.electronAPI.onWindowMaximized((maximized) => {
       this.windowMaximized = maximized;
     });
+
+    window.addEventListener('i18n:locale-changed', () => { this.i18nKey++; });
 
     setTimeout(() => this.refreshAll(), 500);
   },
@@ -119,12 +123,11 @@ createApp({
   },
 
   methods: {
-    // ─── 数据 ───
     async refreshOne(instanceId) {
       const plat = this.platforms.find(p => p.id === instanceId);
       if (!plat) return;
       plat.loading = true;
-      this.setStatus(instanceId, '⏳ 正在查询...', 'loading');
+      this.setStatus(instanceId, I18N.t('status.querying'), 'loading');
 
       try {
         const data = await window.electronAPI.refreshPlatform(instanceId);
@@ -132,19 +135,19 @@ createApp({
 
         if (data.result.status === 'ok') {
           this.balances[instanceId] = data.result.data;
-          this.lastUpdated[instanceId] = Date.now();  // 记录更新时间
+          this.lastUpdated[instanceId] = Date.now();
           if (data.result.data.today) this.todayUsages[instanceId] = data.result.data.today;
-          this.setStatus(instanceId, `✓ 已更新 — ${new Date().toLocaleTimeString('zh-CN')}`, 'success');
+          this.setStatus(instanceId, I18N.t('status.updated', { time: new Date().toLocaleTimeString(I18N.getLocale() === 'zh-CN' ? 'zh-CN' : 'en-US') }), 'success');
         } else if (data.result.status === 'no_api') {
           this.setStatus(instanceId,
             data.result.message + (data.result.console_url
-              ? `<br><a href="${data.result.console_url}" target="_blank">→ 前往网页控制台</a>`
+              ? `<br><a href="${data.result.console_url}" target="_blank">${I18N.t('status.goToConsole')}</a>`
               : ''), 'no-api');
         } else {
-          this.setStatus(instanceId, `❌ ${data.result.message || 'HTTP ' + data.result.code || '未知错误'}`, 'error');
+          this.setStatus(instanceId, `❌ ${data.result.message || 'HTTP ' + data.result.code || I18N.t('status.unknownError')}`, 'error');
         }
       } catch (e) {
-        this.setStatus(instanceId, `❌ 网络错误: ${e.message}`, 'error');
+        this.setStatus(instanceId, I18N.t('status.networkError', { msg: e.message }), 'error');
       } finally {
         plat.loading = false;
       }
@@ -170,7 +173,6 @@ createApp({
       }
     },
 
-    // ─── 拖拽排序 ───
     onDragStart(instanceId) {
       this.draggingId = instanceId;
     },
@@ -186,7 +188,6 @@ createApp({
       const fromIdx = this.layout.findIndex(l => l.id === fromId);
       const toIdx = this.layout.findIndex(l => l.id === toId);
       if (fromIdx < 0 || toIdx < 0) return;
-      // 移动：从原位取出，插入目标位
       const [item] = this.layout.splice(fromIdx, 1);
       this.layout.splice(toIdx, 0, item);
       this.persistLayout();
@@ -199,9 +200,7 @@ createApp({
       this.dragOverId = null;
     },
 
-    // ─── 详情面板 ───
     openDetail(instanceId) {
-      // 拖拽时不打开详情
       if (this.draggingId) return;
       this.detailPlatformId = instanceId;
     },
@@ -209,36 +208,24 @@ createApp({
       this.detailPlatformId = null;
     },
 
-    // ─── 设置弹窗 ───
     openSettings(plat) {
       this.editingPlatform = { ...plat };
       this.showModal = true;
     },
     async closeModal() {
-      // 如果有待确认的添加实例，说明用户没有保存就关闭了——回滚
       if (this.pendingAddInstanceId) {
         const rollbackId = this.pendingAddInstanceId;
         this.pendingAddInstanceId = null;
-
-        // 后端移除实例
         await window.electronAPI.removePlatformInstance(rollbackId);
-
-        // 从本地 layout 移除
         const idx = this.layout.findIndex(l => l.id === rollbackId);
         if (idx >= 0) this.layout.splice(idx, 1);
-
-        // 刷新平台列表
         this.platforms = await window.electronAPI.getPlatforms();
       }
-
       this.showModal = false;
       this.editingPlatform = null;
     },
     async onSettingsSaved({ instanceId, hasNewKey }) {
-      // 用户保存了——清除待回滚标记，避免 closeModal 误回滚
       this.pendingAddInstanceId = null;
-
-      // 重新加载平台数据
       this.platforms = await window.electronAPI.getPlatforms();
       this.closeModal();
       if (hasNewKey) {
@@ -249,20 +236,14 @@ createApp({
       }
     },
 
-    // ─── 添加卡片（多实例支持） ───
     openAddModal() { this.showAddModal = true; },
     closeAddModal() { this.showAddModal = false; },
 
     async addCard(platformType) {
-      // 1. 通过后端创建新实例，获得 instanceId
       const resp = await window.electronAPI.addPlatformInstance(platformType);
       if (resp.error) return;
       const instanceId = resp.instanceId;
-
-      // 标记为待确认——如果用户取消 SettingsModal，需要回滚
       this.pendingAddInstanceId = instanceId;
-
-      // 2. 添加到 layout
       const platDef = this.platforms.find(p => p.type === platformType);
       this.layout.push({
         id: instanceId,
@@ -272,21 +253,14 @@ createApp({
         h: platDef?.defaultH || 1,
       });
       this.persistLayout();
-
-      // 3. 刷新平台列表
       this.platforms = await window.electronAPI.getPlatforms();
-
-      // 4. 关闭添加弹窗
       this.closeAddModal();
-
-      // 5. 自动打开设置弹窗
       const newPlat = this.platforms.find(p => p.id === instanceId);
       if (newPlat) {
         this.openSettings(newPlat);
       }
     },
 
-    // ─── 移除卡片（确认弹窗） ───
     removeCard(instanceId) {
       const plat = this.platforms.find(p => p.id === instanceId);
       const name = plat?.alias || plat?.name || instanceId;
@@ -297,17 +271,10 @@ createApp({
     async confirmDelete() {
       if (!this.confirmDeleteTarget) return;
       const instanceId = this.confirmDeleteTarget.id;
-
-      // 通过后端移除实例（同时清理 config 和 layout）
       await window.electronAPI.removePlatformInstance(instanceId);
-
-      // 从本地 layout 移除
       const idx = this.layout.findIndex(l => l.id === instanceId);
       if (idx >= 0) this.layout.splice(idx, 1);
-
-      // 刷新平台列表
       this.platforms = await window.electronAPI.getPlatforms();
-
       this.showConfirmDelete = false;
       this.confirmDeleteTarget = null;
     },
@@ -317,16 +284,12 @@ createApp({
       this.confirmDeleteTarget = null;
     },
 
-    // 设置弹窗中点击「移除此实例」
     onSettingsDelete(instanceId) {
-      // 用户主动删除——清除待回滚标记，由 removeCard 流程处理清理
       this.pendingAddInstanceId = null;
       this.closeModal();
-      // 延迟一帧让设置弹窗关闭动画完成后再弹确认框
       setTimeout(() => this.removeCard(instanceId), 150);
     },
 
-    // ─── 持久化布局（保留 type 字段） ───
     persistLayout() {
       window.electronAPI.saveLayout(
         this.layout.map(item => {
@@ -340,7 +303,6 @@ createApp({
       );
     },
 
-    // ─── 引导回调（wizard 传入实例 ID，如 "deepseek#1"） ───
     async onWizardAddCard(instanceId) {
       this.platforms = await window.electronAPI.getPlatforms();
       const plat = this.platforms.find(p => p.id === instanceId);
@@ -357,14 +319,13 @@ createApp({
       this.showWizard = false;
     },
 
-    // ─── 窗口控制 ───
     minimizeWindow() { window.electronAPI.windowMinimize(); },
     toggleMaximize() { window.electronAPI.windowMaximize(); },
     closeWindow() { window.electronAPI.windowClose(); },
   },
 
   template: `
-    <!-- ══════ 首次启动引导 ══════ -->
+    <div :key="i18nKey">
     <WelcomeWizard
       v-if="showWizard"
       :platforms="platforms"
@@ -374,24 +335,22 @@ createApp({
     />
 
     <template v-if="!showWizard">
-      <!-- ══════ 顶部状态栏 ══════ -->
       <header class="status-bar">
-        <div class="status-bar-left">⚡ API 聚合面板</div>
+        <div class="status-bar-left">⚡ ${I18N.t('app.title')}</div>
         <div class="status-bar-right">
           <span>{{ currentTime }}</span>
           <span class="version">v{{ appVersion }}</span>
-          <button style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:2px 6px;font-size:0.8rem" title="最小化" @click="minimizeWindow">─</button>
-          <button style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:2px 6px;font-size:0.8rem" title="最大化" @click="toggleMaximize">□</button>
-          <button style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:2px 6px;font-size:0.8rem" title="关闭" @click="closeWindow">✕</button>
+          <button style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:2px 6px;font-size:0.8rem" title="Minimize" @click="minimizeWindow">─</button>
+          <button style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:2px 6px;font-size:0.8rem" title="Maximize" @click="toggleMaximize">□</button>
+          <button style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:2px 6px;font-size:0.8rem" title="Close" @click="closeWindow">✕</button>
         </div>
       </header>
 
-      <!-- ══════ 桌面网格（可拖拽） ══════ -->
       <main class="desktop">
         <div v-if="layoutPlatforms.length === 0" class="empty-state">
           <div class="empty-icon">📱</div>
-          <div class="empty-text">面板为空</div>
-          <div class="empty-hint">点击底部 ＋ 添加平台卡片</div>
+          <div class="empty-text">${I18N.t('app.empty')}</div>
+          <div class="empty-hint">${I18N.t('app.emptyHint')}</div>
         </div>
 
         <div v-else class="platform-list">
@@ -416,20 +375,18 @@ createApp({
         </div>
       </main>
 
-      <!-- ══════ 底部 Dock 栏 ══════ -->
       <footer class="dock">
         <button class="dock-btn primary" @click="openAddModal">
           <span class="dock-icon">＋</span>
-          <span>添加</span>
+          <span>${I18N.t('dock.add')}</span>
         </button>
         <button class="dock-btn primary" :class="{ spinning: refreshingAll }" @click="refreshAll" :disabled="refreshingAll">
           <span class="dock-icon">⟳</span>
-          <span>刷新全部</span>
+          <span>${I18N.t('dock.refreshAll')}</span>
         </button>
       </footer>
     </template>
 
-    <!-- ══════ 详情面板 ══════ -->
     <DetailSheet
       v-if="detailPlatform"
       :platform="detailPlatform"
@@ -441,7 +398,6 @@ createApp({
       @settings="openSettings"
     />
 
-    <!-- ══════ 设置弹窗 ══════ -->
     <SettingsModal
       :visible="showModal"
       :platform="editingPlatform"
@@ -450,7 +406,6 @@ createApp({
       @delete="onSettingsDelete"
     />
 
-    <!-- ══════ 添加卡片弹窗 ══════ -->
     <AddCardModal
       :visible="showAddModal"
       :available-platforms="availablePlatforms"
@@ -459,7 +414,6 @@ createApp({
       @add="addCard"
     />
 
-    <!-- ══════ 删除确认弹窗 ══════ -->
     <div v-if="showConfirmDelete" class="confirm-overlay" @click.self="cancelDelete">
       <div class="confirm-dialog">
         <div class="confirm-icon-wrap">
@@ -470,16 +424,15 @@ createApp({
             <line x1="14" y1="11" x2="14" y2="17"></line>
           </svg>
         </div>
-        <h3 class="confirm-title">移除平台</h3>
-        <p class="confirm-message">
-          确认从面板移除「<strong>{{ confirmDeleteTarget?.name }}</strong>」？
-        </p>
-        <p class="confirm-hint">API Key 配置将一并删除</p>
+        <h3 class="confirm-title">${I18N.t('delete.title')}</h3>
+        <p class="confirm-message" v-html="confirmDeleteMsg"></p>
+        <p class="confirm-hint">${I18N.t('delete.hint')}</p>
         <div class="confirm-actions">
-          <button class="confirm-btn confirm-btn-cancel" @click="cancelDelete">取消</button>
-          <button class="confirm-btn confirm-btn-danger" @click="confirmDelete">移除</button>
+          <button class="confirm-btn confirm-btn-cancel" @click="cancelDelete">${I18N.t('delete.cancel')}</button>
+          <button class="confirm-btn confirm-btn-danger" @click="confirmDelete">${I18N.t('delete.confirm')}</button>
         </div>
       </div>
+    </div>
     </div>
   `,
 }).mount('#app');

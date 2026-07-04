@@ -1378,3 +1378,43 @@ body {
   border-radius: 6px;
   font-weight: 500;
 }
+
+/* ══════════════════════════════════════
+   Language Selector
+   ══════════════════════════════════════ */
+.settings-language-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.language-selector {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.lang-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.lang-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.lang-btn.active {
+  background: rgba(163, 255, 71, 0.1);
+  color: var(--accent);
+  border-color: rgba(163, 255, 71, 0.3);
+}

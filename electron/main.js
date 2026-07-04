@@ -25,10 +25,11 @@ const APP_ENV_FILE = path.join(CONFIG_DIR, '.api_panel.env');
 const ENV_FILE = path.join(require('os').homedir(), '.hermes', '.env');
 const OPENCLAW_FILE = path.join(require('os').homedir(), '.openclaw', 'openclaw.json');
 const STATE_FILE = path.join(CONFIG_DIR, 'state.json');
+const LOCALE_FILE = path.join(CONFIG_DIR, '.locale');
 
 const CREDENTIAL_SOURCE_LABELS = {
   app: 'API Panel (.api_panel.env)',
-  manual: '手动填写',
+  manual: 'Manual',
   hermes: 'Hermes Agent',
   openclaw: 'OpenClaw',
 };
@@ -470,7 +471,7 @@ async function queryBalance(platformId, apiKey) {
   if (!plat.hostname || !plat.parser) {
     return {
       status: 'no_api',
-      message: `${plat.name} 不支持 REST API 查询余额，请访问网页控制台`,
+      message: `${plat.name} does not support REST API balance queries. Please visit the web console.`,
       console_url: plat.console_url,
     };
   }
@@ -478,7 +479,7 @@ async function queryBalance(platformId, apiKey) {
   if (!apiKey) {
     return {
       status: 'no_api',
-      message: `请为 ${plat.name} 配置 API Key`,
+      message: `Please configure API Key for ${plat.name}`,
       console_url: plat.console_url,
     };
   }
@@ -489,7 +490,7 @@ async function queryBalance(platformId, apiKey) {
     return { status: 'ok', data, raw };
   } catch (e) {
     if (e.code === 401) {
-      return { status: 'error', message: `${plat.name} API Key 无效或已过期` };
+      return { status: 'error', message: `${plat.name} API Key is invalid or expired` };
     }
     return { status: 'error', code: e.code, message: e.message };
   }
@@ -515,10 +516,10 @@ function loadOpenclawKeys() {
 function importCredentialFromSource(instanceId, source) {
   const config = loadConfig();
   const instData = config.platforms?.[instanceId];
-  if (!instData) return { status: 'error', message: '未找到这个平台实例' };
+  if (!instData)     return { status: 'error', message: 'Instance not found' };
 
   const platDef = PLATFORM_DEFS[instData.type];
-  if (!platDef) return { status: 'error', message: '未知平台类型' };
+  if (!platDef)     return { status: 'error', message: 'Unknown platform type' };
 
   let sourceVars = {};
   if (source === 'hermes') {
@@ -526,7 +527,7 @@ function importCredentialFromSource(instanceId, source) {
   } else if (source === 'openclaw') {
     sourceVars = loadOpenclawKeys();
   } else {
-    return { status: 'error', message: '不支持的导入来源' };
+    return { status: 'error', message: 'Unsupported import source' };
   }
 
   const envKeys = platDef.env_keys || [];
@@ -534,7 +535,7 @@ function importCredentialFromSource(instanceId, source) {
   if (!matchedKey) {
     return {
       status: 'not_found',
-      message: `${CREDENTIAL_SOURCE_LABELS[source]} 中没有找到 ${platDef.name} 的 API Key`,
+      message: `No API Key for ${platDef.name} found in ${CREDENTIAL_SOURCE_LABELS[source]}`,
       expected_keys: envKeys,
     };
   }
@@ -894,6 +895,23 @@ function registerIpcHandlers() {
     const config = loadConfig();
     return !config.layout || !Array.isArray(config.layout) || config.layout.length === 0;
   });
+
+  // ─── 语言设置 ───
+  ipcMain.handle('get-language', () => {
+    try {
+      if (fs.existsSync(LOCALE_FILE)) {
+        return fs.readFileSync(LOCALE_FILE, 'utf-8').trim();
+      }
+    } catch (_) {}
+    return null;
+  });
+
+  ipcMain.handle('save-language', (_event, locale) => {
+    try {
+      if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR, { recursive: true });
+      fs.writeFileSync(LOCALE_FILE, locale, 'utf-8');
+    } catch (_) {}
+  });
 }
 
 // ─── 窗口管理 ───
@@ -907,7 +925,7 @@ function createWindow() {
     height: 780,
     minWidth: 460,
     minHeight: 600,
-    title: 'API 聚合面板',
+    title: 'API Panel',
     frame: false,
     backgroundColor: '#0a0f0a',
     titleBarStyle: 'hidden',
