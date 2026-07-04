@@ -11,8 +11,11 @@
     "build:linux": "electron-builder --linux",
     "build:win": "electron-builder --win",
 "build:all": "electron-builder --linux --win",
-    "reinstall": "node -e \"if(process.platform==='win32'){console.log('Please run npm run build:win first')}else{const{execSync}=require('child_process');execSync('rm -f dist/*.deb && npm run build:linux',{stdio:'inherit'});console.log('Build complete. Install with: sudo dpkg -i dist/api-panel_*.deb')}\""
-  },
+"test": "vitest run",
+"test:watch": "vitest",
+"test:coverage": "vitest run --coverage",
+"reinstall": "node -e \"if(process.platform==='win32'){console.log('Please run npm run build:win first')}else{const{execSync}=require('child_process');execSync('rm -f dist/*.deb && npm run build:linux',{stdio:'inherit'});console.log('Build complete. Install with: sudo dpkg -i dist/api-panel_*.deb')}\""
+},
   "build": {
     "appId": "com.hermes.api-panel",
     "productName": "API Panel",
@@ -55,7 +58,10 @@
   },
   "devDependencies": {
     "electron": "^33.0.0",
-    "electron-builder": "^25.0.0"
+    "electron-builder": "^25.0.0",
+    "vitest": "^2.1.0",
+    "happy-dom": "^15.11.0",
+    "@vue/test-utils": "^2.4.0"
   },
   "dependencies": {
     "gridstack": "^12.6.0",
